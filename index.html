@@ -208,6 +208,12 @@
         }
         button.primary:hover { background: #15306b; }
         button:hover { background: #e4edfe; }
+        button.danger {
+            background: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+        button.danger:hover { background: #c82333; }
         .spacer { flex: 1; }
         .table-wrapper {
             overflow-x: auto;
@@ -386,6 +392,12 @@
         .data-controls button:hover {
             background: #3a5a8a;
         }
+        .data-controls button.danger {
+            background: #dc3545;
+        }
+        .data-controls button.danger:hover {
+            background: #c82333;
+        }
         @media print {
             .no-print, .toolstrip, .delete-btn, .note, .message-box, .cpc-selector, .copyright-footer, .data-controls { display: none; }
             body { background: white; }
@@ -440,8 +452,9 @@
         </div>
         <span id="userBadge" class="user-badge">Guest User</span>
         <div class="data-controls">
-            <button id="saveLocalBtn" class="primary" title="Save to browser">💾 Save Locally</button>
-            <button id="loadLocalBtn" class="primary" title="Load from browser">📂 Load Local</button>
+            <button id="saveLocalBtn" class="primary" title="Save to browser">💾 Save</button>
+            <button id="loadLocalBtn" class="primary" title="Load from browser">📂 Load</button>
+            <button id="clearSavedBtn" class="danger" title="Clear all saved data">🗑️ Clear Saved</button>
         </div>
     </div>
 
@@ -486,7 +499,8 @@
         ✅ <strong>HRA Calculation (7th Pay):</strong> HRA Rate dropdown (No, Fixed, 0.1*PAY2) - HRA = Fixed HRA if Fixed selected, or 0.1*PAY2 if formula selected.<br>
         ✅ <strong>Fixed HRA:</strong> Set in the increment row for 7th Pay CPC.<br>
         ✅ <strong>PF Rate (7th Pay):</strong> Select formula from dropdown - calculates PF S in both DUE and DRAWN columns.<br>
-        ✅ <strong>Save/Load:</strong> Use the buttons in the increment row to save/load data from your browser.<br>
+        ✅ <strong>Save/Load:</strong> Use the buttons in the increment row to save/load data from your browser. Load shows a selection dialog.<br>
+        ✅ <strong>Clear Saved:</strong> Permanently removes all saved data from browser storage.<br>
         ✅ <strong>Download PDF:</strong> Generates PDF from saved data with proper formatting (HRA Rate columns hidden).
     </div>
 
@@ -1522,8 +1536,9 @@
                 return;
             }
             
-            // Create a unique key based on CPC type and timestamp for multiple saves
-            const saveKey = `arrears_${data.cpcType}_${data.empId}_${Date.now()}`;
+            // Create a unique key based on CPC type, empId and timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const saveKey = `arrears_${data.cpcType}_${data.empId}_${timestamp}`;
             const saveMetaKey = 'arrears_saved_list';
             
             // Get existing saved list or create new one
@@ -1538,12 +1553,15 @@
                 date: new Date().toLocaleString(),
                 level: data.level,
                 fromDate: data.fromDate,
-                toDate: data.toDate
+                toDate: data.toDate,
+                timestamp: Date.now()
             });
             
-            // Keep only last 10 saves to avoid clutter
-            if (savedList.length > 10) {
-                const removed = savedList.splice(0, savedList.length - 10);
+            // Keep only last 20 saves to avoid clutter
+            if (savedList.length > 20) {
+                // Sort by timestamp (newest first) and keep top 20
+                savedList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                const removed = savedList.splice(20);
                 // Remove old data from localStorage
                 removed.forEach(item => {
                     localStorage.removeItem(item.key);
@@ -1554,13 +1572,13 @@
             localStorage.setItem(saveKey, JSON.stringify(data));
             localStorage.setItem(saveMetaKey, JSON.stringify(savedList));
             
-            showMessage(`✅ Data saved successfully to browser storage (Key: ${saveKey.slice(-8)})`, true);
+            showMessage(`✅ Data saved successfully for ${data.empName} (${data.empId})`, true);
         } catch (error) {
             showMessage('❌ Error saving to localStorage: ' + error.message, false);
         }
     }
 
-    // Load latest data from localStorage
+    // Load data from localStorage with exact selection
     function loadFromLocalStorage() {
         try {
             const saveMetaKey = 'arrears_saved_list';
@@ -1571,38 +1589,46 @@
                 return;
             }
             
-            // Show dialog to select which save to load
-            const saveOptions = savedList.map((save, index) => {
-                return `${index + 1}. ${save.empName} (${save.empId}) - ${save.cpcType} - ${save.date}`;
-            }).join('\n');
+            // Sort by date (newest first)
+            savedList.sort((a, b) => new Date(b.date) - new Date(a.date));
             
-            const selection = prompt(
-                `Select which saved data to load:\n${saveOptions}\n\nEnter number (1-${savedList.length}) or Cancel to load latest:`
-            );
+            // Create a detailed selection dialog
+            let message = "Select saved data to load:\n\n";
+            savedList.forEach((save, index) => {
+                message += `${index + 1}. ${save.empName} (${save.empId})\n`;
+                message += `   ${save.cpcType} | ${save.level} | ${save.date}\n`;
+                message += `   Period: ${save.fromDate} to ${save.toDate}\n\n`;
+            });
+            message += `Enter number (1-${savedList.length}) or Cancel to abort:`;
             
-            let selectedSave;
+            const selection = prompt(message);
+            
             if (selection === null) {
-                // Load latest
-                selectedSave = savedList[savedList.length - 1];
-            } else {
-                const index = parseInt(selection) - 1;
-                if (index >= 0 && index < savedList.length) {
-                    selectedSave = savedList[index];
-                } else {
-                    showMessage('❌ Invalid selection', false);
-                    return;
-                }
-            }
-            
-            const data = JSON.parse(localStorage.getItem(selectedSave.key));
-            
-            if (!data) {
-                showMessage('❌ Saved data not found', false);
+                showInfo('❌ Load cancelled');
                 return;
             }
             
+            const index = parseInt(selection) - 1;
+            if (isNaN(index) || index < 0 || index >= savedList.length) {
+                showMessage('❌ Invalid selection', false);
+                return;
+            }
+            
+            const selectedSave = savedList[index];
+            const dataJson = localStorage.getItem(selectedSave.key);
+            
+            if (!dataJson) {
+                showMessage('❌ Saved data not found. It may have been deleted.', false);
+                // Remove invalid entry from list
+                const updatedList = savedList.filter(s => s.key !== selectedSave.key);
+                localStorage.setItem(saveMetaKey, JSON.stringify(updatedList));
+                return;
+            }
+            
+            const data = JSON.parse(dataJson);
+            
             // Apply loaded data to form
-            document.getElementById('cpcType').value = data.cpcType;
+            document.getElementById('cpcType').value = data.cpcType || '7thPay';
             updateTableHeader();
             
             document.getElementById('empId').value = data.empId || '';
@@ -1614,110 +1640,154 @@
             document.getElementById('incrementMonth').value = data.incrementMonth || 'July';
             document.getElementById('fixedHRA').value = data.fixedHRA || '0';
             
-            // Load table data
+            // Clear existing table
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
-            data.tableData.forEach(row => {
-                const monthParts = row.month.split('-');
-                let monthValue;
-                if (monthParts.length === 2) {
-                    const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-                    const monthIndex = monthNames.indexOf(monthParts[0].toUpperCase());
-                    if (monthIndex !== -1) {
-                        const year = monthParts[1];
-                        monthValue = `${year}-${(monthIndex+1).toString().padStart(2,'0')}`;
+            // Load table data exactly as saved
+            if (data.tableData && Array.isArray(data.tableData)) {
+                data.tableData.forEach(row => {
+                    // Parse month from saved format (e.g., "JAN-2024") to value format (e.g., "2024-01")
+                    const monthParts = row.month.split('-');
+                    let monthValue;
+                    if (monthParts.length === 2) {
+                        const monthNames = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+                        const monthIndex = monthNames.indexOf(monthParts[0].toUpperCase());
+                        if (monthIndex !== -1) {
+                            const year = monthParts[1];
+                            monthValue = `${year}-${(monthIndex+1).toString().padStart(2,'0')}`;
+                        } else {
+                            monthValue = data.cpcType === '6thPay' ? '2006-01' : '2016-01';
+                        }
                     } else {
                         monthValue = data.cpcType === '6thPay' ? '2006-01' : '2016-01';
                     }
-                } else {
-                    monthValue = data.cpcType === '6thPay' ? '2006-01' : '2016-01';
-                }
-                
-                const newRow = createEmptyRow(monthValue);
-                const monthSelect = newRow.querySelector('.month-cell');
-                monthSelect.value = monthValue;
-                
-                const daysInput = newRow.querySelector('.days-in-month');
-                daysInput.value = parseInt(row.days) || 30;
-                
-                const setField = (selector, value) => {
-                    const field = newRow.querySelector(selector);
-                    if (field) field.value = parseFloat(value) || 0;
-                };
-                
-                const setSelect = (selector, value) => {
-                    const field = newRow.querySelector(selector);
-                    if (field) field.value = value;
-                };
-                
-                setField('.dalimit-cell', row.daLimit);
-                
-                if (data.cpcType === '6thPay') {
-                    setField('.due-pay', row.duePay);
-                    setField('.due-gp', row.dueGp);
-                    setField('.due-pay2', row.duePay2);
-                    setField('.due-gp1', row.dueGp1);
-                    setField('.due-da', row.dueDa);
-                    setSelect('.due-hra-rate', row.dueHraRate || 'No');
-                    setField('.due-hra', row.dueHra);
-                    setField('.due-total', row.dueTotal);
-                    setField('.due-pfs', row.duePfs);
-                    setField('.due-unc', row.dueUnc);
-                    setField('.drawn-pay', row.drawnPay);
-                    setField('.drawn-gp', row.drawnGp);
-                    setField('.drawn-pay2', row.drawnPay2);
-                    setField('.drawn-gp1', row.drawnGp1);
-                    setField('.drawn-da', row.drawnDa);
-                    setSelect('.drawn-hra-rate', row.drawnHraRate || 'No');
-                    setField('.drawn-hra', row.drawnHra);
-                    setField('.drawn-total', row.drawnTotal);
-                    setField('.drawn-pfs', row.drawnPfs);
-                    setField('.drawn-unc', row.drawnUnc);
-                    setField('.diff-pay', row.diffPay);
-                    setField('.diff-gp', row.diffGp);
-                    setField('.diff-da', row.diffDa);
-                    setField('.diff-hra', row.diffHra);
-                    setField('.diff-total', row.diffTotal);
-                    setField('.diff-pfs', row.diffPfs);
-                    setField('.diff-unc', row.diffUnc);
-                    setField('.diff-net', row.diffNet);
-                } else {
-                    setField('.due-pay', row.duePay);
-                    setField('.due-pay2', row.duePay2);
-                    setField('.due-da', row.dueDa);
-                    setSelect('.due-hra-rate', row.dueHraRate || 'No');
-                    setField('.due-hra', row.dueHra);
-                    setField('.due-total', row.dueTotal);
-                    setField('.due-pfs', row.duePfs);
-                    setField('.due-unc', row.dueUnc);
-                    setField('.drawn-pay', row.drawnPay);
-                    setField('.drawn-pay2', row.drawnPay2);
-                    setField('.drawn-da', row.drawnDa);
-                    setSelect('.drawn-hra-rate', row.drawnHraRate || 'No');
-                    setField('.drawn-hra', row.drawnHra);
-                    setField('.drawn-total', row.drawnTotal);
-                    setField('.drawn-pfs', row.drawnPfs);
-                    setField('.drawn-unc', row.drawnUnc);
-                    setField('.diff-pay', row.diffPay);
-                    setField('.diff-da', row.diffDa);
-                    setField('.diff-hra', row.diffHra);
-                    setField('.diff-total', row.diffTotal);
-                    setField('.diff-pfs', row.diffPfs);
-                    setField('.diff-unc', row.diffUnc);
-                    setField('.diff-net', row.diffNet);
-                }
-                
-                setField('.da-rate-drawn', row.daRate);
-                
-                // Trigger recalculation
-                monthSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                tbody.appendChild(newRow);
+                    
+                    const newRow = createEmptyRow(monthValue);
+                    
+                    // Set month and days
+                    const monthSelect = newRow.querySelector('.month-cell');
+                    monthSelect.value = monthValue;
+                    
+                    const daysInput = newRow.querySelector('.days-in-month');
+                    daysInput.value = parseInt(row.days) || getDaysInMonth(monthValue);
+                    
+                    // Helper functions to set values
+                    const setField = (selector, value) => {
+                        const field = newRow.querySelector(selector);
+                        if (field) {
+                            field.value = (value !== undefined && value !== null) ? parseFloat(value) : 0;
+                        }
+                    };
+                    
+                    const setSelect = (selector, value) => {
+                        const field = newRow.querySelector(selector);
+                        if (field && value) {
+                            // Check if the value exists in options
+                            const options = Array.from(field.options).map(opt => opt.value);
+                            if (options.includes(value)) {
+                                field.value = value;
+                            } else {
+                                field.value = field.options[0].value; // Set to first option if not found
+                            }
+                        }
+                    };
+                    
+                    // Set all fields based on CPC type
+                    setField('.dalimit-cell', row.daLimit);
+                    
+                    if (data.cpcType === '6thPay') {
+                        setField('.due-pay', row.duePay);
+                        setField('.due-gp', row.dueGp);
+                        setField('.due-pay2', row.duePay2);
+                        setField('.due-gp1', row.dueGp1);
+                        setField('.due-da', row.dueDa);
+                        setSelect('.due-hra-rate', row.dueHraRate);
+                        setField('.due-hra', row.dueHra);
+                        setField('.due-total', row.dueTotal);
+                        setField('.due-pfs', row.duePfs);
+                        setField('.due-unc', row.dueUnc);
+                        setField('.drawn-pay', row.drawnPay);
+                        setField('.drawn-gp', row.drawnGp);
+                        setField('.drawn-pay2', row.drawnPay2);
+                        setField('.drawn-gp1', row.drawnGp1);
+                        setField('.drawn-da', row.drawnDa);
+                        setSelect('.drawn-hra-rate', row.drawnHraRate);
+                        setField('.drawn-hra', row.drawnHra);
+                        setField('.drawn-total', row.drawnTotal);
+                        setField('.drawn-pfs', row.drawnPfs);
+                        setField('.drawn-unc', row.drawnUnc);
+                        setField('.diff-pay', row.diffPay);
+                        setField('.diff-gp', row.diffGp);
+                        setField('.diff-da', row.diffDa);
+                        setField('.diff-hra', row.diffHra);
+                        setField('.diff-total', row.diffTotal);
+                        setField('.diff-pfs', row.diffPfs);
+                        setField('.diff-unc', row.diffUnc);
+                        setField('.diff-net', row.diffNet);
+                    } else {
+                        setField('.due-pay', row.duePay);
+                        setField('.due-pay2', row.duePay2);
+                        setField('.due-da', row.dueDa);
+                        setSelect('.due-hra-rate', row.dueHraRate);
+                        setField('.due-hra', row.dueHra);
+                        setField('.due-total', row.dueTotal);
+                        setField('.due-pfs', row.duePfs);
+                        setField('.due-unc', row.dueUnc);
+                        setField('.drawn-pay', row.drawnPay);
+                        setField('.drawn-pay2', row.drawnPay2);
+                        setField('.drawn-da', row.drawnDa);
+                        setSelect('.drawn-hra-rate', row.drawnHraRate);
+                        setField('.drawn-hra', row.drawnHra);
+                        setField('.drawn-total', row.drawnTotal);
+                        setField('.drawn-pfs', row.drawnPfs);
+                        setField('.drawn-unc', row.drawnUnc);
+                        setField('.diff-pay', row.diffPay);
+                        setField('.diff-da', row.diffDa);
+                        setField('.diff-hra', row.diffHra);
+                        setField('.diff-total', row.diffTotal);
+                        setField('.diff-pfs', row.diffPfs);
+                        setField('.diff-unc', row.diffUnc);
+                        setField('.diff-net', row.diffNet);
+                    }
+                    
+                    setField('.da-rate-drawn', row.daRate);
+                    
+                    // Trigger recalculation to ensure all derived fields are correct
+                    monthSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    tbody.appendChild(newRow);
+                });
+            }
+            
+            showMessage(`✅ Loaded ${data.tableData.length} rows for ${data.empName} (${data.empId})`, true);
+            
+        } catch (error) {
+            console.error('Load error:', error);
+            showMessage('❌ Error loading from localStorage: ' + error.message, false);
+        }
+    }
+
+    // Clear all saved data from localStorage
+    function clearSavedData() {
+        try {
+            if (!confirm('⚠️ Are you sure you want to delete ALL saved data from browser storage? This cannot be undone.')) {
+                return;
+            }
+            
+            const saveMetaKey = 'arrears_saved_list';
+            const savedList = JSON.parse(localStorage.getItem(saveMetaKey) || '[]');
+            
+            // Remove all saved data entries
+            savedList.forEach(item => {
+                localStorage.removeItem(item.key);
             });
             
-            showMessage(`✅ Loaded ${data.tableData.length} rows from browser storage`, true);
+            // Remove the meta list
+            localStorage.removeItem(saveMetaKey);
+            
+            showMessage('✅ All saved data has been cleared from browser storage', true);
         } catch (error) {
-            showMessage('❌ Error loading from localStorage: ' + error.message, false);
+            showMessage('❌ Error clearing saved data: ' + error.message, false);
         }
     }
 
@@ -2135,6 +2205,7 @@
         document.getElementById('exportExcelBtn').addEventListener('click', exportExcel);
         document.getElementById('saveLocalBtn').addEventListener('click', saveToLocalStorage);
         document.getElementById('loadLocalBtn').addEventListener('click', loadFromLocalStorage);
+        document.getElementById('clearSavedBtn').addEventListener('click', clearSavedData);
         document.getElementById('downloadPDFBtn').addEventListener('click', downloadPDF);
         document.getElementById('clearBtn').addEventListener('click', clearForm);
         
@@ -2143,7 +2214,7 @@
             rows.forEach(row => recalcRow(row));
         });
         
-        showInfo('👋 Welcome! Your data will be saved in your browser. Click Save Locally to store.');
+        showInfo('👋 Welcome! Your data will be saved in your browser. Click Save to store, Load to retrieve.');
     });
 </script>
 </body>
