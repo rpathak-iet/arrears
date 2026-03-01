@@ -1515,6 +1515,7 @@
     }
 
     // Save data to localStorage
+       // Save data to localStorage
     function saveToLocalStorage() {
         try {
             const data = collectDataForSaving();
@@ -1571,8 +1572,102 @@
         }
     }
 
+    function collectDataForSaving() {
+        const rows = document.querySelectorAll('#tableBody tr');
+        const cpcType = document.getElementById('cpcType').value;
+        const tableData = [];
+
+        rows.forEach(r => {
+            const monthSel = r.querySelector('.month-cell');
+            const monthLabel = monthSel.options[monthSel.selectedIndex].text;
+            
+            if (cpcType === '6thPay') {
+                const rowData = {
+                    month: monthLabel,
+                    days: parseInt(r.querySelector('.days-in-month').value) || 0,
+                    daLimit: parseInt(r.querySelector('.dalimit-cell').value) || 0,
+                    duePay: parseFloat(r.querySelector('.due-pay').value) || 0,
+                    dueGp: parseFloat(r.querySelector('.due-gp').value) || 0,
+                    duePay2: parseFloat(r.querySelector('.due-pay2').value) || 0,
+                    dueGp1: parseFloat(r.querySelector('.due-gp1').value) || 0,
+                    dueDa: parseFloat(r.querySelector('.due-da').value) || 0,
+                    dueHraRate: r.querySelector('.due-hra-rate').value,
+                    dueHra: parseFloat(r.querySelector('.due-hra').value) || 0,
+                    dueTotal: parseFloat(r.querySelector('.due-total').value) || 0,
+                    duePfs: parseFloat(r.querySelector('.due-pfs').value) || 0,
+                    dueUnc: parseFloat(r.querySelector('.due-unc').value) || 0,
+                    drawnPay: parseFloat(r.querySelector('.drawn-pay').value) || 0,
+                    drawnGp: parseFloat(r.querySelector('.drawn-gp').value) || 0,
+                    drawnPay2: parseFloat(r.querySelector('.drawn-pay2').value) || 0,
+                    drawnGp1: parseFloat(r.querySelector('.drawn-gp1').value) || 0,
+                    drawnDa: parseFloat(r.querySelector('.drawn-da').value) || 0,
+                    drawnHraRate: r.querySelector('.drawn-hra-rate').value,
+                    drawnHra: parseFloat(r.querySelector('.drawn-hra').value) || 0,
+                    drawnTotal: parseFloat(r.querySelector('.drawn-total').value) || 0,
+                    drawnPfs: parseFloat(r.querySelector('.drawn-pfs').value) || 0,
+                    drawnUnc: parseFloat(r.querySelector('.drawn-unc').value) || 0,
+                    diffPay: parseFloat(r.querySelector('.diff-pay').value) || 0,
+                    diffGp: parseFloat(r.querySelector('.diff-gp').value) || 0,
+                    diffDa: parseFloat(r.querySelector('.diff-da').value) || 0,
+                    diffHra: parseFloat(r.querySelector('.diff-hra').value) || 0,
+                    diffTotal: parseFloat(r.querySelector('.diff-total').value) || 0,
+                    diffPfs: parseFloat(r.querySelector('.diff-pfs').value) || 0,
+                    diffUnc: parseFloat(r.querySelector('.diff-unc').value) || 0,
+                    diffNet: parseFloat(r.querySelector('.diff-net').value) || 0,
+                    daRate: parseFloat(r.querySelector('.da-rate-drawn').value) || 0
+                };
+                tableData.push(rowData);
+            } else {
+                const rowData = {
+                    month: monthLabel,
+                    days: parseInt(r.querySelector('.days-in-month').value) || 0,
+                    daLimit: parseInt(r.querySelector('.dalimit-cell').value) || 0,
+                    duePay: parseFloat(r.querySelector('.due-pay').value) || 0,
+                    duePay2: parseFloat(r.querySelector('.due-pay2').value) || 0,
+                    dueDa: parseFloat(r.querySelector('.due-da').value) || 0,
+                    dueHraRate: r.querySelector('.due-hra-rate').value,
+                    dueHra: parseFloat(r.querySelector('.due-hra').value) || 0,
+                    dueTotal: parseFloat(r.querySelector('.due-total').value) || 0,
+                    duePfRate: r.querySelector('.due-pf-rate') ? r.querySelector('.due-pf-rate').value : '0.0833*(PAY2+DA)',
+                    duePfs: parseFloat(r.querySelector('.due-pfs').value) || 0,
+                    dueUnc: parseFloat(r.querySelector('.due-unc').value) || 0,
+                    drawnPay: parseFloat(r.querySelector('.drawn-pay').value) || 0,
+                    drawnPay2: parseFloat(r.querySelector('.drawn-pay2').value) || 0,
+                    drawnDa: parseFloat(r.querySelector('.drawn-da').value) || 0,
+                    drawnHraRate: r.querySelector('.drawn-hra-rate').value,
+                    drawnHra: parseFloat(r.querySelector('.drawn-hra').value) || 0,
+                    drawnTotal: parseFloat(r.querySelector('.drawn-total').value) || 0,
+                    drawnPfRate: r.querySelector('.drawn-pf-rate') ? r.querySelector('.drawn-pf-rate').value : '0.0833*(PAY2+DA)',
+                    drawnPfs: parseFloat(r.querySelector('.drawn-pfs').value) || 0,
+                    drawnUnc: parseFloat(r.querySelector('.drawn-unc').value) || 0,
+                    diffPay: parseFloat(r.querySelector('.diff-pay').value) || 0,
+                    diffDa: parseFloat(r.querySelector('.diff-da').value) || 0,
+                    diffHra: parseFloat(r.querySelector('.diff-hra').value) || 0,
+                    diffTotal: parseFloat(r.querySelector('.diff-total').value) || 0,
+                    diffPfs: parseFloat(r.querySelector('.diff-pfs').value) || 0,
+                    diffUnc: parseFloat(r.querySelector('.diff-unc').value) || 0,
+                    diffNet: parseFloat(r.querySelector('.diff-net').value) || 0,
+                    daRate: parseFloat(r.querySelector('.da-rate-drawn').value) || 0
+                };
+                tableData.push(rowData);
+            }
+        });
+
+        return {
+            tableData: tableData,
+            cpcType: cpcType,
+            empId: document.getElementById('empId').value,
+            empName: document.getElementById('empName').value,
+            designation: document.getElementById('designation').value,
+            level: document.getElementById('levelField').value,
+            fromDate: document.getElementById('fromDate').value,
+            toDate: document.getElementById('toDate').value,
+            incrementMonth: document.getElementById('incrementMonth').value,
+            fixedHRA: document.getElementById('fixedHRA').value
+        };
+    }
+
     // Load data from localStorage with exact selection
-          // Load data from localStorage with exact selection
     function loadFromLocalStorage() {
         try {
             const saveMetaKey = 'arrears_saved_list';
@@ -1667,17 +1762,16 @@
                     const monthSelect = newRow.querySelector('.month-cell');
                     const daysInput = newRow.querySelector('.days-in-month');
                     
-                    // Temporarily remove the change event listener from month select
-                    const monthChangeHandler = () => {
-                        daysInput.value = getDaysInMonth(monthSelect.value);
-                        recalcRow(newRow);
-                    };
-                    
-                    // Remove existing listeners by cloning and replacing
-                    const newMonthSelect = monthSelect.cloneNode(true);
+                    // Temporarily remove the change event listener from month select by cloning
+                    const newMonthSelect = monthSelect.cloneNode(false);
                     monthSelect.parentNode.replaceChild(newMonthSelect, monthSelect);
                     
                     // Set the month value
+                    newMonthSelect.value = monthValue;
+                    
+                    // Populate the month select options
+                    const monthOptions = generateMonthOptions(monthValue, data.cpcType);
+                    newMonthSelect.innerHTML = monthOptions;
                     newMonthSelect.value = monthValue;
                     
                     // Update references
@@ -1755,6 +1849,21 @@
                         setSelect('.due-hra-rate', row.dueHraRate);
                         setField('.due-hra', row.dueHra);
                         setField('.due-total', row.dueTotal);
+                        
+                        // Set PF rate dropdowns for 7th Pay - CRITICAL FIX
+                        if (row.duePfRate) {
+                            const duePfRateSelect = newRow.querySelector('.due-pf-rate');
+                            if (duePfRateSelect) {
+                                // Check if the value exists in options
+                                const options = Array.from(duePfRateSelect.options).map(opt => opt.value);
+                                if (options.includes(row.duePfRate)) {
+                                    duePfRateSelect.value = row.duePfRate;
+                                } else {
+                                    duePfRateSelect.value = '0.0833*(PAY2+DA)'; // Default if not found
+                                }
+                            }
+                        }
+                        
                         setField('.due-pfs', row.duePfs);
                         setField('.due-unc', row.dueUnc);
                         setField('.drawn-pay', row.drawnPay);
@@ -1763,6 +1872,21 @@
                         setSelect('.drawn-hra-rate', row.drawnHraRate);
                         setField('.drawn-hra', row.drawnHra);
                         setField('.drawn-total', row.drawnTotal);
+                        
+                        // Set PF rate dropdowns for DRAWN - CRITICAL FIX
+                        if (row.drawnPfRate) {
+                            const drawnPfRateSelect = newRow.querySelector('.drawn-pf-rate');
+                            if (drawnPfRateSelect) {
+                                // Check if the value exists in options
+                                const options = Array.from(drawnPfRateSelect.options).map(opt => opt.value);
+                                if (options.includes(row.drawnPfRate)) {
+                                    drawnPfRateSelect.value = row.drawnPfRate;
+                                } else {
+                                    drawnPfRateSelect.value = '0.0833*(PAY2+DA)'; // Default if not found
+                                }
+                            }
+                        }
+                        
                         setField('.drawn-pfs', row.drawnPfs);
                         setField('.drawn-unc', row.drawnUnc);
                         setField('.diff-pay', row.diffPay);
@@ -1772,14 +1896,6 @@
                         setField('.diff-pfs', row.diffPfs);
                         setField('.diff-unc', row.diffUnc);
                         setField('.diff-net', row.diffNet);
-                        
-                        // Set PF rate dropdowns for 7th Pay
-                        if (row.duePfRate) {
-                            setSelect('.due-pf-rate', row.duePfRate);
-                        }
-                        if (row.drawnPfRate) {
-                            setSelect('.drawn-pf-rate', row.drawnPfRate);
-                        }
                         
                         // Re-attach event listeners for 7th Pay
                         const duePfRate = newRow.querySelector('.due-pf-rate');
@@ -1813,7 +1929,7 @@
                         else alert('At least one row required');
                     });
                     
-                    // Force recalculation with the correct days value
+                    // Force recalculation with the correct values
                     recalcRow(newRow);
                     
                     tbody.appendChild(newRow);
@@ -2280,5 +2396,6 @@
 </script>
 </body>
 </html>
+
 
 
