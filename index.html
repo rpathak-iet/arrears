@@ -505,6 +505,26 @@
             color: #666;
             font-size: 1rem;
         }
+        /* Popup alert style (nice sign) */
+        .startup-popup {
+            background: #fef9e7;
+            border-left: 8px solid #ffc107;
+            border-radius: 16px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+        }
+        .popup-icon {
+            font-size: 1.8rem;
+            margin-right: 10px;
+        }
+        .close-popup {
+            background: transparent;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0 8px;
+        }
+        .close-popup:hover { color: #000; }
         @media print {
             .no-print, .toolstrip, .delete-btn, .note, .message-box, .cpc-selector, .copyright-footer, .data-controls, .modal-overlay { display: none; }
             body { background: white; }
@@ -2455,6 +2475,36 @@
         document.getElementById('fixedHRA').value = '0';
     }
 
+    // ========== startup popup ==========
+    function showStartupAlert() {
+        // create a custom modal with nice sign
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay no-print';
+        overlay.style.display = 'flex';
+        overlay.style.zIndex = '2000';
+        overlay.innerHTML = `
+            <div class="modal-content startup-popup" style="max-width:550px;">
+                <div class="modal-header" style="border-bottom:2px solid #ffc107;">
+                    <h3 style="color:#b45f06;"><span class="popup-icon">📢</span> Important – Please Read</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                </div>
+                <div style="padding:16px 8px;">
+                    <ul style="list-style-type:none; padding-left:0; margin:0;">
+                        <li style="margin-bottom:12px; display:flex; align-items:flex-start; gap:10px;"><span style="color:#b45f06; font-size:1.3rem;">📌</span> <span style="font-size:0.95rem;"><strong>1.</strong> This utility calculates your CAS arrears of <strong>6th Pay CPC</strong> and <strong>7th Pay CPC</strong> separately.</span></li>
+                        <li style="margin-bottom:12px; display:flex; align-items:flex-start; gap:10px;"><span style="color:#b45f06; font-size:1.3rem;">📌</span> <span style="font-size:0.95rem;"><strong>2.</strong> Please get the calculations verified by someone. Admin is not responsible for any mismatch.</span></li>
+                        <li style="margin-bottom:12px; display:flex; align-items:flex-start; gap:10px;"><span style="color:#b45f06; font-size:1.3rem;">📌</span> <span style="font-size:0.95rem;"><strong>3.</strong> The calculated Arrears data will be saved locally in your browser until cleared.</span></li>
+                        <li style="margin-bottom:12px; display:flex; align-items:flex-start; gap:10px;"><span style="color:#b45f06; font-size:1.3rem;">📌</span> <span style="font-size:0.95rem;"><strong>4.</strong> You can load, download PDF and clear the selected saved data any time. Once cleared, the data cannot be retrieved. You have to re-enter the data again for calculation.</span></li>
+                        <li style="margin-bottom:12px; display:flex; align-items:flex-start; gap:10px;"><span style="color:#b45f06; font-size:1.3rem;">📌</span> <span style="font-size:0.95rem;"><strong>5.</strong> Saved Calculations will be available only in the browser where saved. If you open on different system or browser, you have to re-enter the data.</span></li>
+                    </ul>
+                </div>
+                <div class="modal-actions" style="border-top-color:#ffc107;">
+                    <button class="primary" onclick="this.closest('.modal-overlay').remove()" style="background:#1e3a8a; font-size:0.9rem; padding:8px 20px;">I understand, continue</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+
     // Initialize the application
     document.addEventListener('DOMContentLoaded', () => {
         updateTableHeader();
@@ -2487,6 +2537,9 @@
             const rows = document.querySelectorAll('#tableBody tr');
             rows.forEach(row => recalcRow(row));
         });
+        
+        // show the custom popup alert on every load
+        showStartupAlert();
         
         showInfo('👋 Welcome! Your data will be saved in your browser. Click Save to store, Load to retrieve.');
     });
