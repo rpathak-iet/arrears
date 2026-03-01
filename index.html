@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
     <title>DAVV IET · Pay Arrears Calculator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; margin: 0; padding: 0; }
@@ -464,7 +462,7 @@
         <button id="loadFromDateBtn" class="primary">📅 Load months from start date</button>
         <span class="spacer"></span>
         <button id="exportExcelBtn">📥 Excel (XLSX)</button>
-        <button id="downloadPDFBtn" class="primary">📄 Download PDF</button>
+        <button id="downloadPDFBtn" class="primary">📄 Download PDF from Saved Data</button>
         <button id="clearBtn">🗑️ Clear Form</button>
     </div>
 
@@ -489,7 +487,7 @@
         ✅ <strong>Fixed HRA:</strong> Set in the increment row for 7th Pay CPC.<br>
         ✅ <strong>PF Rate (7th Pay):</strong> Select formula from dropdown - calculates PF S in both DUE and DRAWN columns.<br>
         ✅ <strong>Save/Load:</strong> Use the buttons in the increment row to save/load data from your browser.<br>
-        ✅ <strong>Download PDF:</strong> Generates PDF with proper formatting using html2canvas and jsPDF.
+        ✅ <strong>Download PDF:</strong> Generates PDF from saved data with proper formatting (HRA Rate columns hidden).
     </div>
 
     <!-- ********** PROFESSIONAL COPYRIGHT FOOTER WITH ICON ********** -->
@@ -547,6 +545,49 @@
     };
 
     let currentCPCType = '7thPay';
+
+    // Format number in Indian style (with commas)
+    function formatIndianNumber(num) {
+        if (num === null || num === undefined || isNaN(num)) return '0';
+        num = Math.round(num);
+        let numStr = Math.abs(num).toString();
+        let lastThree = numStr.substring(numStr.length - 3);
+        let otherNumbers = numStr.substring(0, numStr.length - 3);
+        if (otherNumbers !== '') {
+            lastThree = ',' + lastThree;
+        }
+        let result = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+        return num < 0 ? '-' + result : result;
+    }
+
+    // Convert number to words
+    function convertToWords(num) {
+        if (num === 0) return 'Zero';
+        
+        const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+                    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+                    'Seventeen', 'Eighteen', 'Nineteen'];
+        const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+        
+        function numToWords(n) {
+            if (n < 20) return ones[n];
+            if (n < 100) return tens[Math.floor(n/10)] + (n%10 ? ' ' + ones[n%10] : '');
+            if (n < 1000) return ones[Math.floor(n/100)] + ' Hundred' + (n%100 ? ' ' + numToWords(n%100) : '');
+            if (n < 100000) return numToWords(Math.floor(n/1000)) + ' Thousand' + (n%1000 ? ' ' + numToWords(n%1000) : '');
+            if (n < 10000000) return numToWords(Math.floor(n/100000)) + ' Lakh' + (n%100000 ? ' ' + numToWords(n%100000) : '');
+            return numToWords(Math.floor(n/10000000)) + ' Crore' + (n%10000000 ? ' ' + numToWords(n%10000000) : '');
+        }
+        
+        const wholePart = Math.floor(Math.abs(num));
+        const decimalPart = Math.round((Math.abs(num) - wholePart) * 100);
+        
+        let words = numToWords(wholePart);
+        if (decimalPart > 0) {
+            words += ' and ' + decimalPart + '/100';
+        }
+        
+        return words;
+    }
 
     function getYearFromMonthVal(monthVal) {
         if (!monthVal) return 2016;
@@ -1680,74 +1721,356 @@
         }
     }
 
-    // PDF generation function using html2canvas and jsPDF
-    async function downloadPDF() {
+    // Generate PDF from saved data in the original format (HRA Rate columns hidden)
+    function downloadPDF() {
         try {
+            const data = collectDataForSaving();
+            
+            if (!data.empId || data.empId.trim() === '') {
+                showMessage('❌ Please enter Employee ID before generating PDF', false);
+                return;
+            }
+            
+            if (data.tableData.length === 0) {
+                showMessage('❌ No data to generate PDF', false);
+                return;
+            }
+            
             showInfo('⏳ Generating PDF...');
             
-            const element = document.getElementById('printableArea');
+            const is6thPay = data.cpcType === '6thPay';
+            const titlePrefix = is6thPay ? '6th Pay' : '7th Pay';
             
-            // Create a clone for PDF generation to avoid modifying the original
-            const clone = element.cloneNode(true);
-            clone.classList.add('pdf-version');
+            // Calculate totals
+            let totalDiffPay = 0, totalDiffGp = 0, totalDiffDa = 0, totalDiffHra = 0, totalDiffTotal = 0;
+            let totalDiffPfs = 0, totalDiffUnc = 0, totalDiffNet = 0;
             
-            // Remove all buttons and interactive elements from clone
-            clone.querySelectorAll('.no-print, button, .toolstrip, .delete-btn, .data-controls').forEach(el => el.remove());
+            data.tableData.forEach(row => {
+                if (is6thPay) {
+                    totalDiffPay += row.diffPay || 0;
+                    totalDiffGp += row.diffGp || 0;
+                    totalDiffDa += row.diffDa || 0;
+                    totalDiffHra += row.diffHra || 0;
+                    totalDiffTotal += row.diffTotal || 0;
+                    totalDiffPfs += row.diffPfs || 0;
+                    totalDiffUnc += row.diffUnc || 0;
+                    totalDiffNet += row.diffNet || 0;
+                } else {
+                    totalDiffPay += row.diffPay || 0;
+                    totalDiffDa += row.diffDa || 0;
+                    totalDiffHra += row.diffHra || 0;
+                    totalDiffTotal += row.diffTotal || 0;
+                    totalDiffPfs += row.diffPfs || 0;
+                    totalDiffUnc += row.diffUnc || 0;
+                    totalDiffNet += row.diffNet || 0;
+                }
+            });
             
-            // Style for PDF
-            const style = document.createElement('style');
-            style.textContent = `
-                .pdf-version { padding: 20px; background: white; }
-                .pdf-version table { border-collapse: collapse; width: 100%; font-size: 8pt; }
-                .pdf-version th { background: #e2ebf9; padding: 4px; border: 1px solid #000; }
-                .pdf-version td { padding: 3px; border: 1px solid #000; }
-                .due-col { background-color: #fffacd; }
-                .drawn-col { background-color: #e6ffe6; }
-                .diff-col { background-color: #ffe6e6; }
-                .copyright-footer { text-align: center; margin-top: 20px; font-size: 8pt; }
+            const today = new Date();
+            const dateStr = today.toLocaleDateString();
+            
+            // Create HTML content for PDF with Indian number formatting
+            // MODIFIED: Removed HRA Rate columns from PDF output
+            const style = `
+                <style>
+                    @page { size: A4 landscape; margin: 1cm; }
+                    body { font-family: Arial, Helvetica, sans-serif; margin: 0.5cm; color: #333; font-size: 9pt; }
+                    .header { text-align: center; margin-bottom: 15px; }
+                    .header h1 { color: #1e3a8a; margin: 2px 0; font-size: 18pt; font-weight: bold; }
+                    .header h2 { color: #b8860b; margin: 2px 0; font-size: 16pt; font-weight: bold; }
+                    .header h3 { color: #333; margin: 5px 0 2px; font-size: 14pt; }
+                    .header p { margin: 2px 0; font-size: 10pt; }
+                    .info-section { margin: 15px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background: #f9f9f9; display: flex; flex-wrap: wrap; }
+                    .info-row { display: flex; margin: 3px 10px 3px 0; min-width: 300px; }
+                    .info-label { font-weight: bold; width: 100px; color: #1e3a8a; }
+                    .info-value { flex: 1; }
+                    table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 7pt; }
+                    th { background: #e2ebf9; padding: 4px 2px; text-align: center; border: 1px solid #000; font-weight: bold; vertical-align: middle; }
+                    td { padding: 3px 2px; text-align: center; border: 1px solid #000; }
+                    .month-header { background: #e2ebf9; }
+                    .due-header { background: #fffacd; }
+                    .drawn-header { background: #e6ffe6; }
+                    .diff-header { background: #ffe6e6; }
+                    .da-header { background: #f2f0d0; }
+                    .due-col { background-color: #fffacd; }
+                    .drawn-col { background-color: #e6ffe6; }
+                    .diff-col { background-color: #ffe6e6; }
+                    .total-row { font-weight: bold; background: #f0f6ff; }
+                    .total-row td { font-weight: bold; }
+                    .footer { text-align: center; margin-top: 20px; font-size: 8pt; color: #666; border-top: 1px solid #ccc; padding-top: 10px; }
+                    .summary-table { width: 60%; margin: 15px auto; font-size: 10pt; border-collapse: collapse; }
+                    .summary-table td { padding: 6px 10px; border: 1px solid #000; }
+                    .summary-table td:first-child { font-weight: bold; background: #f0f6ff; width: 60%; }
+                    .summary-table td:last-child { text-align: right; width: 40%; }
+                    .amount-words { margin-top: 20px; padding: 10px; border-top: 2px dashed #ccc; font-size: 10pt; text-align: center; }
+                    .net-amount { font-size: 12pt; font-weight: bold; color: #1e3a8a; }
+                    .page-break { page-break-after: always; }
+                </style>
             `;
-            clone.appendChild(style);
             
-            // Temporarily add to document
-            clone.style.position = 'absolute';
-            clone.style.left = '-9999px';
-            clone.style.top = '0';
-            document.body.appendChild(clone);
+            let htmlContent = `
+                <html>
+                <head><meta charset="UTF-8"><title>${titlePrefix} Arrears - ${data.empName}</title>${style}</head>
+                <body>
+                <div class="header">
+                    <h1>Devi Ahilya Vishwavidyalaya</h1>
+                    <h2>Institute of Engineering & Technology</h2>
+                    <h3>${titlePrefix} Salary Difference in Revised Pay Scale</h3>
+                    <p><strong>${data.level}</strong></p>
+                    <p>Statement from ${data.fromDate} to ${data.toDate} | Month of Increment: <strong>${data.incrementMonth}</strong></p>
+                    ${!is6thPay && data.fixedHRA ? `<p><strong>Fixed HRA Amount: ₹${formatIndianNumber(parseInt(data.fixedHRA))}</strong></p>` : ''}
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-row"><span class="info-label">Employee ID:</span> <span class="info-value">${data.empId || 'N/A'}</span></div>
+                    <div class="info-row"><span class="info-label">Employee Name:</span> <span class="info-value">${data.empName}</span></div>
+                    <div class="info-row"><span class="info-label">Designation:</span> <span class="info-value">${data.designation}</span></div>
+                </div>
+                
+                <table>
+                    <thead>
+            `;
             
-            // Generate PDF
-            const canvas = await html2canvas(clone, {
-                scale: 2,
-                logging: false,
-                allowTaint: false,
-                useCORS: true
-            });
+            if (is6thPay) {
+                // MODIFIED: Removed HRA Rate columns from headers for 6th Pay
+                htmlContent += `
+                        <tr>
+                            <th rowspan="2" class="month-header">Month</th>
+                            <th rowspan="2" class="month-header">Days</th>
+                            <th rowspan="2" class="month-header">DA<br>Limit</th>
+                            <th colspan="9" class="due-header">DUE</th>
+                            <th colspan="9" class="drawn-header">DRAWN</th>
+                            <th colspan="8" class="diff-header">DIFFERENCE</th>
+                            <th rowspan="2" class="da-header">DA Rate<br>Drawn</th>
+                        </tr>
+                        <tr>
+                            <th class="due-header">PAY</th><th class="due-header">GP</th><th class="due-header">PAY2</th><th class="due-header">GP1</th>
+                            <th class="due-header">DA</th><th class="due-header">HRA</th><th class="due-header">TOTAL</th><th class="due-header">PFS</th><th class="due-header">UNC</th>
+                            <th class="drawn-header">PAY</th><th class="drawn-header">GP</th><th class="drawn-header">PAY2</th><th class="drawn-header">GP1</th>
+                            <th class="drawn-header">DA</th><th class="drawn-header">HRA</th><th class="drawn-header">TOTAL</th><th class="drawn-header">PFS</th><th class="drawn-header">UNC</th>
+                            <th class="diff-header">PAY</th><th class="diff-header">GP</th><th class="diff-header">DA</th><th class="diff-header">HRA</th>
+                            <th class="diff-header">TOTAL</th><th class="diff-header">PFS</th><th class="diff-header">UNC</th><th class="diff-header">NET</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+                
+                data.tableData.forEach(row => {
+                    htmlContent += `<tr>
+                        <td>${row.month}</td>
+                        <td>${row.days}</td>
+                        <td>${row.daLimit}</td>
+                        <td class="due-col">${Math.round(row.duePay)}</td>
+                        <td class="due-col">${Math.round(row.dueGp)}</td>
+                        <td class="due-col">${Math.round(row.duePay2)}</td>
+                        <td class="due-col">${Math.round(row.dueGp1)}</td>
+                        <td class="due-col">${Math.round(row.dueDa)}</td>
+                        <td class="due-col">${Math.round(row.dueHra)}</td>
+                        <td class="due-col">${Math.round(row.dueTotal)}</td>
+                        <td class="due-col">${Math.round(row.duePfs)}</td>
+                        <td class="due-col">${Math.round(row.dueUnc)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnPay)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnGp)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnPay2)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnGp1)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnDa)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnHra)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnTotal)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnPfs)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnUnc)}</td>
+                        <td class="diff-col">${Math.round(row.diffPay)}</td>
+                        <td class="diff-col">${Math.round(row.diffGp)}</td>
+                        <td class="diff-col">${Math.round(row.diffDa)}</td>
+                        <td class="diff-col">${Math.round(row.diffHra)}</td>
+                        <td class="diff-col">${Math.round(row.diffTotal)}</td>
+                        <td class="diff-col">${Math.round(row.diffPfs)}</td>
+                        <td class="diff-col">${Math.round(row.diffUnc)}</td>
+                        <td class="diff-col" style="font-weight: bold;">${Math.round(row.diffNet)}</td>
+                        <td>${row.daRate}</td>
+                    </tr>`;
+                });
+                
+                // Adjusted total row colspan for 6th Pay
+                htmlContent += `<tr class="total-row">
+                    <td colspan="3"><strong>TOTAL</strong></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td><strong>${Math.round(totalDiffPay)}</strong></td>
+                    <td><strong>${Math.round(totalDiffGp)}</strong></td>
+                    <td><strong>${Math.round(totalDiffDa)}</strong></td>
+                    <td><strong>${Math.round(totalDiffHra)}</strong></td>
+                    <td><strong>${Math.round(totalDiffTotal)}</strong></td>
+                    <td><strong>${Math.round(totalDiffPfs)}</strong></td>
+                    <td><strong>${Math.round(totalDiffUnc)}</strong></td>
+                    <td><strong>${Math.round(totalDiffNet)}</strong></td>
+                    <td></td>
+                </tr>`;
+                
+            } else {
+                // MODIFIED: Removed HRA Rate columns from headers for 7th Pay
+                htmlContent += `
+                        <tr>
+                            <th rowspan="2" class="month-header">Month</th>
+                            <th rowspan="2" class="month-header">Days</th>
+                            <th rowspan="2" class="month-header">DA<br>Limit</th>
+                            <th colspan="7" class="due-header">DUE</th>
+                            <th colspan="7" class="drawn-header">DRAWN</th>
+                            <th colspan="7" class="diff-header">DIFFERENCE</th>
+                            <th rowspan="2" class="da-header">DA Rate<br>Drawn</th>
+                        </tr>
+                        <tr>
+                            <th class="due-header">PAY</th><th class="due-header">PAY2</th><th class="due-header">DA</th><th class="due-header">HRA</th>
+                            <th class="due-header">TOTAL</th><th class="due-header">PFS</th><th class="due-header">UNC</th>
+                            <th class="drawn-header">PAY</th><th class="drawn-header">PAY2</th><th class="drawn-header">DA</th><th class="drawn-header">HRA</th>
+                            <th class="drawn-header">TOTAL</th><th class="drawn-header">PFS</th><th class="drawn-header">UNC</th>
+                            <th class="diff-header">PAY</th><th class="diff-header">DA</th><th class="diff-header">HRA</th><th class="diff-header">TOTAL</th>
+                            <th class="diff-header">PFS</th><th class="diff-header">UNC</th><th class="diff-header">NET</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+                
+                data.tableData.forEach(row => {
+                    htmlContent += `<tr>
+                        <td>${row.month}</td>
+                        <td>${row.days}</td>
+                        <td>${row.daLimit}</td>
+                        <td class="due-col">${Math.round(row.duePay)}</td>
+                        <td class="due-col">${Math.round(row.duePay2)}</td>
+                        <td class="due-col">${Math.round(row.dueDa)}</td>
+                        <td class="due-col">${Math.round(row.dueHra)}</td>
+                        <td class="due-col">${Math.round(row.dueTotal)}</td>
+                        <td class="due-col">${Math.round(row.duePfs)}</td>
+                        <td class="due-col">${Math.round(row.dueUnc)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnPay)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnPay2)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnDa)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnHra)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnTotal)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnPfs)}</td>
+                        <td class="drawn-col">${Math.round(row.drawnUnc)}</td>
+                        <td class="diff-col">${Math.round(row.diffPay)}</td>
+                        <td class="diff-col">${Math.round(row.diffDa)}</td>
+                        <td class="diff-col">${Math.round(row.diffHra)}</td>
+                        <td class="diff-col">${Math.round(row.diffTotal)}</td>
+                        <td class="diff-col">${Math.round(row.diffPfs)}</td>
+                        <td class="diff-col">${Math.round(row.diffUnc)}</td>
+                        <td class="diff-col" style="font-weight: bold;">${Math.round(row.diffNet)}</td>
+                        <td>${row.daRate}</td>
+                    </tr>`;
+                });
+                
+                // Adjusted total row colspan for 7th Pay
+                htmlContent += `<tr class="total-row">
+                    <td colspan="3"><strong>TOTAL</strong></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td><strong>${Math.round(totalDiffPay)}</strong></td>
+                    <td><strong>${Math.round(totalDiffDa)}</strong></td>
+                    <td><strong>${Math.round(totalDiffHra)}</strong></td>
+                    <td><strong>${Math.round(totalDiffTotal)}</strong></td>
+                    <td><strong>${Math.round(totalDiffPfs)}</strong></td>
+                    <td><strong>${Math.round(totalDiffUnc)}</strong></td>
+                    <td><strong>${Math.round(totalDiffNet)}</strong></td>
+                    <td></td>
+                </tr>`;
+            }
             
-            // Remove clone
-            document.body.removeChild(clone);
+            htmlContent += `
+                    </tbody>
+                </table>
+                
+                <div class="page-break"></div>
+                
+                <div class="header">
+                    <h1>Devi Ahilya Vishwavidyalaya</h1>
+                    <h2>Institute of Engineering & Technology</h2>
+                    <h3>Arrears Summary - ${titlePrefix}</h3>
+                    <p>${data.empName} (${data.empId}) - ${data.designation}</p>
+                </div>
+                
+                <table class="summary-table">
+                    <tr><th colspan="2" style="background: #e2ebf9; font-size: 12pt;">SUMMARY OF ARREARS - ${titlePrefix}</th></tr>
+            `;
             
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jspdf.jsPDF({
-                orientation: 'landscape',
-                unit: 'mm',
-                format: 'a4'
-            });
+            if (is6thPay) {
+                htmlContent += `
+                    <tr><td>Total Difference PAY</td><td>₹ ${formatIndianNumber(totalDiffPay)}</td></tr>
+                    <tr><td>Total Difference GP</td><td>₹ ${formatIndianNumber(totalDiffGp)}</td></tr>
+                    <tr><td>Total Difference DA</td><td>₹ ${formatIndianNumber(totalDiffDa)}</td></tr>
+                    <tr><td>Total Difference HRA</td><td>₹ ${formatIndianNumber(totalDiffHra)}</td></tr>
+                    <tr><td style="background: #f0f6ff;">Total Difference TOTAL</td><td style="background: #f0f6ff;">₹ ${formatIndianNumber(totalDiffTotal)}</td></tr>
+                    <tr><td>Total Difference PFS</td><td>₹ ${formatIndianNumber(totalDiffPfs)}</td></tr>
+                    <tr><td>Total Difference UNC</td><td>₹ ${formatIndianNumber(totalDiffUnc)}</td></tr>
+                    <tr><td style="background: #f0f6ff; font-weight: bold;">Total Difference NET</td><td style="background: #f0f6ff; font-weight: bold;">₹ ${formatIndianNumber(totalDiffNet)}</td></tr>
+                    <tr><td class="net-amount">Net Arrears Payable</td>
+                        <td class="net-amount">₹ ${formatIndianNumber(totalDiffNet)}</td></tr>
+                `;
+            } else {
+                htmlContent += `
+                    <tr><td>Total Difference PAY</td><td>₹ ${formatIndianNumber(totalDiffPay)}</td></tr>
+                    <tr><td>Total Difference DA</td><td>₹ ${formatIndianNumber(totalDiffDa)}</td></tr>
+                    <tr><td>Total Difference HRA</td><td>₹ ${formatIndianNumber(totalDiffHra)}</td></tr>
+                    <tr><td style="background: #f0f6ff;">Total Difference TOTAL</td><td style="background: #f0f6ff;">₹ ${formatIndianNumber(totalDiffTotal)}</td></tr>
+                    <tr><td>Total Difference PFS</td><td>₹ ${formatIndianNumber(totalDiffPfs)}</td></tr>
+                    <tr><td>Total Difference UNC</td><td>₹ ${formatIndianNumber(totalDiffUnc)}</td></tr>
+                    <tr><td style="background: #f0f6ff; font-weight: bold;">Total Difference NET</td><td style="background: #f0f6ff; font-weight: bold;">₹ ${formatIndianNumber(totalDiffNet)}</td></tr>
+                    <tr><td class="net-amount">Net Arrears Payable</td>
+                        <td class="net-amount">₹ ${formatIndianNumber(totalDiffNet)}</td></tr>
+                `;
+            }
             
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
-            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight) * 0.95;
-            const width = imgWidth * ratio;
-            const height = imgHeight * ratio;
+            htmlContent += `
+                </table>
+                
+                <div class="amount-words">
+                    <p><strong>Amount in Words:</strong> ${convertToWords(totalDiffNet)} Rupees Only</p>
+                </div>
+                
+                <div style="margin-top: 30px; display: flex; justify-content: space-between;">
+                    <div style="text-align: left;">
+                        <p>_________________________</p>
+                        <p><strong>Prepared By</strong></p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p>_________________________</p>
+                        <p><strong>Authorised Signatory</strong></p>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p>This is a computer generated statement</p>
+                </div>
+                
+                </body>
+                </html>
+            `;
             
-            pdf.addImage(imgData, 'PNG', (pdfWidth - width) / 2, 5, width, height);
+            // Create a blob and trigger download
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = window.URL.createObjectURL(blob);
             
-            const cpcType = document.getElementById('cpcType').value;
-            const titlePrefix = cpcType === '6thPay' ? '6th_Pay' : '7th_Pay';
-            const empName = document.getElementById('empName').value || 'Guest';
+            // Create an iframe to print/generate PDF
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
             
-            pdf.save(`DAVV_Arrears_${titlePrefix}_${empName}.pdf`);
-            showMessage('✅ PDF downloaded successfully', true);
+            iframe.onload = function() {
+                setTimeout(() => {
+                    iframe.contentWindow.print();
+                    
+                    // Clean up after print dialog closes
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                        window.URL.revokeObjectURL(url);
+                    }, 1000);
+                }, 500);
+            };
+            
+            iframe.src = url;
+            
+            showMessage(`✅ PDF generated. Use browser's print dialog to save as PDF.`, true);
+            
         } catch (error) {
             console.error('PDF generation error:', error);
             showMessage('❌ Error generating PDF: ' + error.message, false);
