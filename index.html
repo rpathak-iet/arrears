@@ -299,8 +299,17 @@
             align-items: center;
             gap: 2px;
         }
-        .month-with-days select { flex: 2; min-width: 70px; }
-        .month-with-days input { flex: 1; min-width: 40px; text-align: center; }
+        .month-with-days select { 
+            flex: 2; 
+            min-width: 90px; 
+            font-size: 0.7rem;
+            text-align: left;
+        }
+        .month-with-days input { 
+            flex: 1; 
+            min-width: 45px; 
+            text-align: center; 
+        }
         .delete-btn {
             background: none;
             border: 1px solid #fbc4c4;
@@ -1032,7 +1041,7 @@
             thead.innerHTML = `
                 <tr>
                     <th rowspan="3">Month & Days</th>
-                    <th rowspan="3">DA limit</th>
+                    <th rowspan="3">DA<br>Limit</th>
                     <th colspan="9" class="section-header">DUE</th>
                     <th colspan="9" class="section-header">DRAWN</th>
                     <th colspan="8" class="section-header">DIFFERENCE</th>
@@ -1053,7 +1062,7 @@
             thead.innerHTML = `
                 <tr>
                     <th rowspan="3">Month & Days</th>
-                    <th rowspan="3">DA limit</th>
+                    <th rowspan="3">DA<br>Limit</th>
                     <th colspan="8" class="section-header">DUE</th>
                     <th colspan="8" class="section-header">DRAWN</th>
                     <th colspan="7" class="section-header">DIFFERENCE</th>
@@ -1090,7 +1099,7 @@
         if (cpcType === '6thPay') {
             tr.innerHTML = `
                 <td class="month-with-days">
-                    <select class="month-cell" style="min-width:70px;">${monthOptions}</select>
+                    <select class="month-cell" style="min-width:90px;">${monthOptions}</select>
                     <input type="number" class="days-in-month" value="${defaultDays}" step="1" min="1" style="width:45px;">
                 </td>
                 <td><input type="number" class="dalimit-cell" readonly value="0" style="background:#f2f7ff;"></td>
@@ -1131,7 +1140,7 @@
         } else {
             tr.innerHTML = `
                 <td class="month-with-days">
-                    <select class="month-cell" style="min-width:70px;">${monthOptions}</select>
+                    <select class="month-cell" style="min-width:90px;">${monthOptions}</select>
                     <input type="number" class="days-in-month" value="${defaultDays}" step="1" min="1" style="width:45px;">
                 </td>
                 <td><input type="number" class="dalimit-cell" readonly value="0" style="background:#f2f7ff;"></td>
@@ -1834,7 +1843,7 @@
                             
                             newRow.innerHTML = `
                                 <td class="month-with-days">
-                                    <select class="month-cell" style="min-width:70px;">${monthOptions}</select>
+                                    <select class="month-cell" style="min-width:90px;">${monthOptions}</select>
                                     <input type="number" class="days-in-month" value="${row.days}" step="1" min="1" style="width:45px;">
                                 </td>
                                 <td><input type="number" class="dalimit-cell" readonly value="${row.daLimit}" style="background:#f2f7ff;"></td>
@@ -1878,7 +1887,7 @@
                             
                             newRow.innerHTML = `
                                 <td class="month-with-days">
-                                    <select class="month-cell" style="min-width:70px;">${monthOptions}</select>
+                                    <select class="month-cell" style="min-width:90px;">${monthOptions}</select>
                                     <input type="number" class="days-in-month" value="${row.days}" step="1" min="1" style="width:45px;">
                                 </td>
                                 <td><input type="number" class="dalimit-cell" readonly value="${row.daLimit}" style="background:#f2f7ff;"></td>
@@ -2201,21 +2210,25 @@
             if (is6thPay) {
                 htmlContent += `
                         <tr>
-                            <th rowspan="2">Month</th>
-                            <th rowspan="2">Days</th>
-                            <th rowspan="2">DA Limit</th>
+                            <th>Month</th>
+                            <th>Days</th>
+                            <th>DA<br>Limit</th>
                             <th colspan="9">DUE</th>
                             <th colspan="9">DRAWN</th>
                             <th colspan="8">DIFFERENCE</th>
-                            <th rowspan="2">DA Rate</th>
+                            <th>DA Rate<br>Drawn</th>
                         </tr>
                         <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                             <th>PAY</th><th>GP</th><th>PAY</th><th>GP1</th>
                             <th>DA</th><th>HRA</th><th>TOTAL</th><th>PFS</th><th>UNC</th>
                             <th>PAY</th><th>GP</th><th>PAY</th><th>GP1</th>
                             <th>DA</th><th>HRA</th><th>TOTAL</th><th>PFS</th><th>UNC</th>
                             <th>PAY</th><th>GP</th><th>DA</th><th>HRA</th>
                             <th>TOTAL</th><th>PFS</th><th>UNC</th><th>NET</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2291,21 +2304,25 @@
             } else {
                 htmlContent += `
                         <tr>
-                            <th rowspan="2">Month</th>
-                            <th rowspan="2">Days</th>
-                            <th rowspan="2">DA Limit</th>
+                            <th>Month</th>
+                            <th>Days</th>
+                            <th>DA<br>Limit</th>
                             <th colspan="7">DUE</th>
                             <th colspan="7">DRAWN</th>
                             <th colspan="7">DIFFERENCE</th>
-                            <th rowspan="2">DA Rate</th>
+                            <th>DA Rate<br>Drawn</th>
                         </tr>
                         <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                             <th>PAY</th><th>PAY</th><th>DA</th><th>HRA</th>
                             <th>TOTAL</th><th>PFS</th><th>UNC</th>
                             <th>PAY</th><th>PAY</th><th>DA</th><th>HRA</th>
                             <th>TOTAL</th><th>PFS</th><th>UNC</th>
                             <th>PAY</th><th>DA</th><th>HRA</th><th>TOTAL</th>
                             <th>PFS</th><th>UNC</th><th>NET</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
