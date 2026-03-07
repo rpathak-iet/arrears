@@ -225,7 +225,7 @@
     width: 100%;
     flex: 1 1 auto;
     min-height: 200px;
-    max-height: 500px; /* Changed from 100% to 500px to show approximately 12 rows */
+    max-height: 500px;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
 }
@@ -311,7 +311,7 @@
         }
         .delete-btn:hover { background: #ffe3e3; }
         .da-rate-drawn { background: #f2f0d0; font-weight: 600; }
-        .hra-rate-select {
+        .hra-number-field {
             min-width: 70px;
             font-size: 0.6rem;
         }
@@ -575,10 +575,6 @@
             <option value="January">January</option>
             <option value="July" selected>July</option>
         </select>
-        <div id="fixedHraContainer" style="display: flex; gap: 10px; align-items: center;">
-            <label for="fixedHRA">Fixed HRA:</label>
-            <input type="number" id="fixedHRA" value="0" min="0" step="100" style="width: 100px;">
-        </div>
         <span id="userBadge" class="user-badge">Guest User</span>
         <div class="data-controls">
             <button id="saveLocalBtn" class="primary" title="Save to browser">💾 Save</button>
@@ -624,13 +620,12 @@
     <div class="note no-print">
         ✅ <strong>Standalone Version:</strong> All data is saved in your browser's local storage.<br>
         ✅ <strong>CPC Selection:</strong> Select 7th Pay CPC or 6th Pay CPC.<br>
-        ✅ <strong>HRA Calculation (6th Pay):</strong> HRA Rate dropdown (Yes/No) - HRA = 0.1*(PAY2+GP1) if Yes, rounded to nearest rupee.<br>
-        ✅ <strong>HRA Calculation (7th Pay):</strong> HRA Rate dropdown (No, Fixed, 0.1*PAY2) - HRA = Fixed HRA if Fixed selected, or 0.1*PAY2 if formula selected.<br>
-        ✅ <strong>Fixed HRA:</strong> Set in the increment row for 7th Pay CPC.<br>
+        ✅ <strong>HRA Calculation:</strong> HRA fields are now number inputs for manual entry (HRA Rate dropdowns removed).<br>
         ✅ <strong>PF Rate (7th Pay):</strong> Select formula from dropdown - calculates PF S in both DUE and DRAWN columns.<br>
         ✅ <strong>Save/Load:</strong> Use the buttons in the increment row to save/load data from your browser. Modern popup for selection.<br>
         ✅ <strong>Clear Saved:</strong> Select which saved data to delete from the popup.<br>
-        ✅ <strong>Download PDF:</strong> Generates PDF from saved data with proper formatting (HRA Rate columns hidden).
+        ✅ <strong>Download PDF:</strong> Generates PDF from saved data with proper formatting (HRA Rate columns hidden).<br>
+        ✅ <strong>Fixed HRA:</strong> Fixed HRA field has been removed as per requirements.
     </div>
 
     <!-- ********** PROFESSIONAL COPYRIGHT FOOTER WITH ICON ********** -->
@@ -829,24 +824,9 @@
         }
     }
 
-    function calculateHRA(pay2, gp1, hraRate, fixedHRA, monthVal) {
-        const year = getYearFromMonthVal(monthVal);
-        
-        if (year < 2016) { // 6th Pay
-            if (hraRate === 'Yes') {
-                return roundToNearestInteger(0.1 * (pay2 + gp1));
-            } else {
-                return 0;
-            }
-        } else { // 7th Pay
-            if (hraRate === 'Fixed') {
-                return fixedHRA;
-            } else if (hraRate === '0.1*PAY2') {
-                return roundToNearestInteger(0.1 * pay2);
-            } else { // 'No'
-                return 0;
-            }
-        }
+    // MODIFIED: calculateHRA function now uses manual HRA value instead of dropdown selection
+    function calculateHRA(manualHRA) {
+        return parseFloat(manualHRA) || 0;
     }
 
     function recalcRow(row) {
@@ -865,7 +845,6 @@
         const totalMonthDays = getDaysInMonth(monthVal);
 
         const is6thPay = row.querySelector('.due-gp') !== null;
-        const fixedHRA = parseFloat(document.getElementById('fixedHRA').value) || 0;
 
         if (is6thPay) {
             const duePay = row.querySelector('.due-pay');
@@ -885,9 +864,9 @@
             let dueDa = roundValue(dueDaRaw, 'PRORATA', monthVal);
             row.querySelector('.due-da').value = dueDa;
             
-            const dueHraRate = row.querySelector('.due-hra-rate').value;
-            let dueHra = calculateHRA(duePay2, dueGp1, dueHraRate, fixedHRA, monthVal);
-            row.querySelector('.due-hra').value = dueHra;
+            // MODIFIED: Get manual HRA value from number input
+            const dueHraInput = row.querySelector('.due-hra');
+            let dueHra = parseFloat(dueHraInput.value) || 0;
             
             let dueTotal = duePay2 + dueGp1 + dueDa + dueHra;
             row.querySelector('.due-total').value = dueTotal;
@@ -914,9 +893,9 @@
             let drawnDa = roundValue(drawnDaRaw, 'PRORATA', monthVal);
             row.querySelector('.drawn-da').value = drawnDa;
             
-            const drawnHraRate = row.querySelector('.drawn-hra-rate').value;
-            let drawnHra = calculateHRA(drawnPay2, drawnGp1, drawnHraRate, fixedHRA, monthVal);
-            row.querySelector('.drawn-hra').value = drawnHra;
+            // MODIFIED: Get manual HRA value from number input
+            const drawnHraInput = row.querySelector('.drawn-hra');
+            let drawnHra = parseFloat(drawnHraInput.value) || 0;
             
             let drawnTotal = drawnPay2 + drawnGp1 + drawnDa + drawnHra;
             row.querySelector('.drawn-total').value = drawnTotal;
@@ -956,9 +935,9 @@
             let dueDa = roundValue(dueDaRaw, 'PRORATA', monthVal);
             row.querySelector('.due-da').value = dueDa;
 
-            const dueHraRate = row.querySelector('.due-hra-rate').value;
-            let dueHra = calculateHRA(duePay2, 0, dueHraRate, fixedHRA, monthVal);
-            row.querySelector('.due-hra').value = dueHra;
+            // MODIFIED: Get manual HRA value from number input
+            const dueHraInput = row.querySelector('.due-hra');
+            let dueHra = parseFloat(dueHraInput.value) || 0;
 
             let dueTotal = duePay2 + dueDa + dueHra;
             row.querySelector('.due-total').value = dueTotal;
@@ -982,9 +961,9 @@
             let drawnDa = roundValue(drawnDaRaw, 'PRORATA', monthVal);
             row.querySelector('.drawn-da').value = drawnDa;
 
-            const drawnHraRate = row.querySelector('.drawn-hra-rate').value;
-            let drawnHra = calculateHRA(drawnPay2, 0, drawnHraRate, fixedHRA, monthVal);
-            row.querySelector('.drawn-hra').value = drawnHra;
+            // MODIFIED: Get manual HRA value from number input
+            const drawnHraInput = row.querySelector('.drawn-hra');
+            let drawnHra = parseFloat(drawnHraInput.value) || 0;
 
             let drawnTotal = drawnPay2 + drawnDa + drawnHra;
             row.querySelector('.drawn-total').value = drawnTotal;
@@ -1042,51 +1021,52 @@
         const cpcType = document.getElementById('cpcType').value;
         document.getElementById('titlePayType').textContent = cpcType === '6thPay' ? '6th Pay' : '7th Pay';
         
-        document.getElementById('fixedHraContainer').style.display = cpcType === '7thPay' ? 'flex' : 'none';
+        // MODIFIED: Removed Fixed HRA container completely
+        // No need to show/hide fixedHRA container as it's removed
         
         if (cpcType === '6thPay') {
             thead.innerHTML = `
                 <tr>
                     <th rowspan="3">Month & Days</th>
                     <th rowspan="3">DA limit</th>
-                    <th colspan="10" class="section-header">DUE</th>
-                    <th colspan="10" class="section-header">DRAWN</th>
+                    <th colspan="9" class="section-header">DUE</th>
+                    <th colspan="9" class="section-header">DRAWN</th>
                     <th colspan="8" class="section-header">DIFFERENCE</th>
                     <th rowspan="3">DA Rate<br>Drawn</th>
                     <th rowspan="3" style="width:35px;">⚙️</th>
                 </tr>
                 <tr>
-                    <th class="due-col">PAY</th><th class="due-col gp-column">GP</th><th class="due-col">PAY</th><th class="due-col gp-column">GP1</th>
-                    <th class="due-col">DA</th><th class="due-col">HRA Rate</th><th class="due-col">HRA</th><th class="due-col">TOTAL</th><th class="due-col">PF S</th><th class="due-col">UN C</th>
-                    <th class="drawn-col">PAY</th><th class="drawn-col gp-column">GP</th><th class="drawn-col">PAY</th><th class="drawn-col gp-column">GP1</th>
-                    <th class="drawn-col">DA</th><th class="drawn-col">HRA Rate</th><th class="drawn-col">HRA</th><th class="drawn-col">TOTAL</th><th class="drawn-col">PF S</th><th class="drawn-col">UN C</th>
+                    <th class="due-col">PAY</th><th class="due-col gp-column">GP</th><th class="due-col">PAY2</th><th class="due-col gp-column">GP1</th>
+                    <th class="due-col">DA</th><th class="due-col">HRA</th><th class="due-col">TOTAL</th><th class="due-col">PF S</th><th class="due-col">UN C</th>
+                    <th class="drawn-col">PAY</th><th class="drawn-col gp-column">GP</th><th class="drawn-col">PAY2</th><th class="drawn-col gp-column">GP1</th>
+                    <th class="drawn-col">DA</th><th class="drawn-col">HRA</th><th class="drawn-col">TOTAL</th><th class="drawn-col">PF S</th><th class="drawn-col">UN C</th>
                     <th class="diff-col">PAY</th><th class="diff-col gp-column">GP</th><th class="diff-col">DA</th><th class="diff-col">HRA</th>
                     <th class="diff-col">TOTAL</th><th class="diff-col">PF S</th><th class="diff-col">UN C</th><th class="diff-col">NET</th>
                 </tr>
-                <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+                <tr><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
             `;
         } else {
             thead.innerHTML = `
                 <tr>
                     <th rowspan="3">Month & Days</th>
                     <th rowspan="3">DA limit</th>
-                    <th colspan="10" class="section-header">DUE</th>
-                    <th colspan="10" class="section-header">DRAWN</th>
+                    <th colspan="8" class="section-header">DUE</th>
+                    <th colspan="8" class="section-header">DRAWN</th>
                     <th colspan="7" class="section-header">DIFFERENCE</th>
                     <th rowspan="3">DA Rate<br>Drawn</th>
                     <th rowspan="3" style="width:35px;">⚙️</th>
                 </tr>
                 <tr>
-                    <th class="due-col">PAY</th><th class="due-col">PAY</th><th class="due-col">DA</th><th class="due-col">HRA Rate</th>
-                    <th class="due-col">HRA</th><th class="due-col">TOTAL</th><th class="due-col">PF Rate</th><th class="due-col">PF S</th><th class="due-col">UN C</th>
-                    <th class="drawn-col">PAY</th><th class="drawn-col">PAY</th><th class="drawn-col">DA</th><th class="drawn-col">HRA Rate</th>
-                    <th class="drawn-col">HRA</th><th class="drawn-col">TOTAL</th><th class="drawn-col">PF Rate</th><th class="drawn-col">PF S</th><th class="drawn-col">UN C</th>
+                    <th class="due-col">PAY</th><th class="due-col">PAY2</th><th class="due-col">DA</th><th class="due-col">HRA</th>
+                    <th class="due-col">TOTAL</th><th class="due-col">PF Rate</th><th class="due-col">PF S</th><th class="due-col">UN C</th>
+                    <th class="drawn-col">PAY</th><th class="drawn-col">PAY2</th><th class="drawn-col">DA</th><th class="drawn-col">HRA</th>
+                    <th class="drawn-col">TOTAL</th><th class="drawn-col">PF Rate</th><th class="drawn-col">PF S</th><th class="drawn-col">UN C</th>
                     <th class="diff-col">PAY</th><th class="diff-col">DA</th><th class="diff-col">HRA</th><th class="diff-col">TOTAL</th>
                     <th class="diff-col">PF S</th><th class="diff-col">UN C</th><th class="diff-col">NET</th>
                 </tr>
                 <tr>
-                    <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
-                    <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                    <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                    <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
                     <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
                 </tr>
             `;
@@ -1116,13 +1096,8 @@
                 <td class="due-col"><input type="number" class="due-pay2" readonly value="0"></td>
                 <td class="due-col gp-column"><input type="number" class="due-gp1" readonly value="0"></td>
                 <td class="due-col"><input type="number" class="due-da" readonly value="0"></td>
-                <td class="due-col">
-                    <select class="hra-rate-select due-hra-rate" style="width:100%; font-size:0.6rem;">
-                        <option value="No">No</option>
-                        <option value="Yes" selected>Yes</option>
-                    </select>
-                </td>
-                <td class="due-col"><input type="number" class="due-hra" readonly value="0"></td>
+                <!-- MODIFIED: Changed from dropdown to number input -->
+                <td class="due-col"><input type="number" class="due-hra" value="0" step="10" min="0" placeholder="HRA"></td>
                 <td class="due-col"><input type="number" class="due-total" readonly value="0"></td>
                 <td class="due-col"><input type="number" class="due-pfs" readonly value="0"></td>
                 <td class="due-col"><input type="number" class="due-unc" readonly value="0"></td>
@@ -1132,13 +1107,8 @@
                 <td class="drawn-col"><input type="number" class="drawn-pay2" readonly value="0"></td>
                 <td class="drawn-col gp-column"><input type="number" class="drawn-gp1" readonly value="0"></td>
                 <td class="drawn-col"><input type="number" class="drawn-da" readonly value="0"></td>
-                <td class="drawn-col">
-                    <select class="hra-rate-select drawn-hra-rate" style="width:100%; font-size:0.6rem;">
-                        <option value="No">No</option>
-                        <option value="Yes" selected>Yes</option>
-                    </select>
-                </td>
-                <td class="drawn-col"><input type="number" class="drawn-hra" readonly value="0"></td>
+                <!-- MODIFIED: Changed from dropdown to number input -->
+                <td class="drawn-col"><input type="number" class="drawn-hra" value="0" step="10" min="0" placeholder="HRA"></td>
                 <td class="drawn-col"><input type="number" class="drawn-total" readonly value="0"></td>
                 <td class="drawn-col"><input type="number" class="drawn-pfs" readonly value="0"></td>
                 <td class="drawn-col"><input type="number" class="drawn-unc" readonly value="0"></td>
@@ -1165,14 +1135,8 @@
                 <td class="due-col"><input type="number" class="due-pay" value="0" step="100" min="0"></td>
                 <td class="due-col"><input type="number" class="due-pay2" readonly value="0"></td>
                 <td class="due-col"><input type="number" class="due-da" readonly value="0"></td>
-                <td class="due-col">
-                    <select class="hra-rate-select due-hra-rate" style="width:100%; font-size:0.6rem;">
-                        <option value="No" selected>No</option>
-                        <option value="Fixed">Fixed</option>
-                        <option value="0.1*PAY2">0.1*PAY2</option>
-                    </select>
-                </td>
-                <td class="due-col"><input type="number" class="due-hra" readonly value="0"></td>
+                <!-- MODIFIED: Changed from dropdown to number input -->
+                <td class="due-col"><input type="number" class="due-hra" value="0" step="10" min="0" placeholder="HRA"></td>
                 <td class="due-col"><input type="number" class="due-total" readonly value="0"></td>
                 <!-- PF Rate Dropdown Column -->
                 <td class="due-col">
@@ -1189,14 +1153,8 @@
                 <td class="drawn-col"><input type="number" class="drawn-pay" value="0" step="100" min="0"></td>
                 <td class="drawn-col"><input type="number" class="drawn-pay2" readonly value="0"></td>
                 <td class="drawn-col"><input type="number" class="drawn-da" readonly value="0"></td>
-                <td class="drawn-col">
-                    <select class="hra-rate-select drawn-hra-rate" style="width:100%; font-size:0.6rem;">
-                        <option value="No" selected>No</option>
-                        <option value="Fixed">Fixed</option>
-                        <option value="0.1*PAY2">0.1*PAY2</option>
-                    </select>
-                </td>
-                <td class="drawn-col"><input type="number" class="drawn-hra" readonly value="0"></td>
+                <!-- MODIFIED: Changed from dropdown to number input -->
+                <td class="drawn-col"><input type="number" class="drawn-hra" value="0" step="10" min="0" placeholder="HRA"></td>
                 <td class="drawn-col"><input type="number" class="drawn-total" readonly value="0"></td>
                 <!-- PF Rate Dropdown Column -->
                 <td class="drawn-col">
@@ -1225,9 +1183,10 @@
         const monthSel = tr.querySelector('.month-cell');
         const daysInp = tr.querySelector('.days-in-month');
         const duePay = tr.querySelector('.due-pay');
-        const dueHraRate = tr.querySelector('.due-hra-rate');
+        // MODIFIED: Use HRA number inputs for event listeners
+        const dueHra = tr.querySelector('.due-hra');
         const drawnPay = tr.querySelector('.drawn-pay');
-        const drawnHraRate = tr.querySelector('.drawn-hra-rate');
+        const drawnHra = tr.querySelector('.drawn-hra');
         
         if (cpcType === '6thPay') {
             const dueGp = tr.querySelector('.due-gp');
@@ -1253,9 +1212,14 @@
         });
         daysInp.addEventListener('input', () => recalcRow(tr));
         duePay.addEventListener('input', () => recalcRow(tr));
-        dueHraRate.addEventListener('change', () => recalcRow(tr));
+        // MODIFIED: Add event listeners for HRA number inputs
+        if (dueHra) {
+            dueHra.addEventListener('input', () => recalcRow(tr));
+        }
         drawnPay.addEventListener('input', () => recalcRow(tr));
-        drawnHraRate.addEventListener('change', () => recalcRow(tr));
+        if (drawnHra) {
+            drawnHra.addEventListener('input', () => recalcRow(tr));
+        }
 
         tr.querySelector('.delete-btn').addEventListener('click', function() {
             if (document.querySelectorAll('#tableBody tr').length > 1) tr.remove();
@@ -1286,9 +1250,14 @@
         const nextMonth = getNextMonth(last.querySelector('.month-cell').value);
         const newRow = createEmptyRow(nextMonth);
         newRow.querySelector('.due-pay').value = last.querySelector('.due-pay').value;
-        newRow.querySelector('.due-hra-rate').value = last.querySelector('.due-hra-rate').value;
+        // MODIFIED: Copy HRA number values instead of dropdown selections
+        if (last.querySelector('.due-hra')) {
+            newRow.querySelector('.due-hra').value = last.querySelector('.due-hra').value;
+        }
         newRow.querySelector('.drawn-pay').value = last.querySelector('.drawn-pay').value;
-        newRow.querySelector('.drawn-hra-rate').value = last.querySelector('.drawn-hra-rate').value;
+        if (last.querySelector('.drawn-hra')) {
+            newRow.querySelector('.drawn-hra').value = last.querySelector('.drawn-hra').value;
+        }
         
         if (document.getElementById('cpcType').value === '6thPay') {
             newRow.querySelector('.due-gp').value = last.querySelector('.due-gp').value;
@@ -1389,6 +1358,14 @@
                         newDrawnPay = roundValue(newDrawnPay, 'PAY_MAIN', currentMonthVal);
                         row.querySelector('.drawn-pay').value = newDrawnPay;
                     }
+                    
+                    // MODIFIED: Copy HRA values from previous row
+                    if (prevRow.querySelector('.due-hra')) {
+                        row.querySelector('.due-hra').value = prevRow.querySelector('.due-hra').value;
+                    }
+                    if (prevRow.querySelector('.drawn-hra')) {
+                        row.querySelector('.drawn-hra').value = prevRow.querySelector('.drawn-hra').value;
+                    }
                 }
                 recalcRow(row);
             }
@@ -1401,22 +1378,21 @@
     function exportExcel() {
         const rows = document.querySelectorAll('#tableBody tr');
         const cpcType = document.getElementById('cpcType').value;
-        const fixedHRA = document.getElementById('fixedHRA').value;
         const mainData = [];
         
         let headers;
         if (cpcType === '6thPay') {
             headers = [
                 'Month','Days','DA limit',
-                'Due_PAY','Due_GP','Due_PAY2','Due_GP1','Due_DA','Due_HRA_Rate','Due_HRA','Due_TOTAL','Due_PFS','Due_UNC',
-                'Drawn_PAY','Drawn_GP','Drawn_PAY2','Drawn_GP1','Drawn_DA','Drawn_HRA_Rate','Drawn_HRA','Drawn_TOTAL','Drawn_PFS','Drawn_UNC',
+                'Due_PAY','Due_GP','Due_PAY2','Due_GP1','Due_DA','Due_HRA','Due_TOTAL','Due_PFS','Due_UNC',
+                'Drawn_PAY','Drawn_GP','Drawn_PAY2','Drawn_GP1','Drawn_DA','Drawn_HRA','Drawn_TOTAL','Drawn_PFS','Drawn_UNC',
                 'Diff_PAY','Diff_GP','Diff_DA','Diff_HRA','Diff_TOTAL','Diff_PFS','Diff_UNC','Diff_NET','DA Rate Drawn'
             ];
         } else {
             headers = [
                 'Month','Days','DA limit',
-                'Due_PAY','Due_PAY2','Due_DA','Due_HRA_Rate','Due_HRA','Due_TOTAL','Due_PF_Rate','Due_PFS','Due_UNC',
-                'Drawn_PAY','Drawn_PAY2','Drawn_DA','Drawn_HRA_Rate','Drawn_HRA','Drawn_TOTAL','Drawn_PF_Rate','Drawn_PFS','Drawn_UNC',
+                'Due_PAY','Due_PAY2','Due_DA','Due_HRA','Due_TOTAL','Due_PF_Rate','Due_PFS','Due_UNC',
+                'Drawn_PAY','Drawn_PAY2','Drawn_DA','Drawn_HRA','Drawn_TOTAL','Drawn_PF_Rate','Drawn_PFS','Drawn_UNC',
                 'Diff_PAY','Diff_DA','Diff_HRA','Diff_TOTAL','Diff_PFS','Diff_UNC','Diff_NET','DA Rate Drawn'
             ];
         }
@@ -1440,7 +1416,6 @@
                 const duePay2 = parseFloat(r.querySelector('.due-pay2').value) || 0;
                 const dueGp1 = parseFloat(r.querySelector('.due-gp1').value) || 0;
                 const dueDa = parseFloat(r.querySelector('.due-da').value) || 0;
-                const dueHraRate = r.querySelector('.due-hra-rate').value;
                 const dueHra = parseFloat(r.querySelector('.due-hra').value) || 0;
                 const dueTotal = parseFloat(r.querySelector('.due-total').value) || 0;
                 const duePfs = parseFloat(r.querySelector('.due-pfs').value) || 0;
@@ -1450,7 +1425,6 @@
                 const drawnPay2 = parseFloat(r.querySelector('.drawn-pay2').value) || 0;
                 const drawnGp1 = parseFloat(r.querySelector('.drawn-gp1').value) || 0;
                 const drawnDa = parseFloat(r.querySelector('.drawn-da').value) || 0;
-                const drawnHraRate = r.querySelector('.drawn-hra-rate').value;
                 const drawnHra = parseFloat(r.querySelector('.drawn-hra').value) || 0;
                 const drawnTotal = parseFloat(r.querySelector('.drawn-total').value) || 0;
                 const drawnPfs = parseFloat(r.querySelector('.drawn-pfs').value) || 0;
@@ -1465,8 +1439,8 @@
                 const diffNet = parseFloat(r.querySelector('.diff-net').value) || 0;
                 const daRate = parseFloat(r.querySelector('.da-rate-drawn').value) || 0;
 
-                mainData.push([monthLabel, days, daLim, duePay, dueGp, duePay2, dueGp1, dueDa, dueHraRate, dueHra, dueTotal, duePfs, dueUnc,
-                    drawnPay, drawnGp, drawnPay2, drawnGp1, drawnDa, drawnHraRate, drawnHra, drawnTotal, drawnPfs, drawnUnc,
+                mainData.push([monthLabel, days, daLim, duePay, dueGp, duePay2, dueGp1, dueDa, dueHra, dueTotal, duePfs, dueUnc,
+                    drawnPay, drawnGp, drawnPay2, drawnGp1, drawnDa, drawnHra, drawnTotal, drawnPfs, drawnUnc,
                     diffPay, diffGp, diffDa, diffHra, diffTotal, diffPfs, diffUnc, diffNet, daRate]);
 
                 totals.days += days; totals.daLimit += daLim;
@@ -1483,7 +1457,6 @@
                 const duePay = parseFloat(r.querySelector('.due-pay').value) || 0;
                 const duePay2 = parseFloat(r.querySelector('.due-pay2').value) || 0;
                 const dueDa = parseFloat(r.querySelector('.due-da').value) || 0;
-                const dueHraRate = r.querySelector('.due-hra-rate').value;
                 const dueHra = parseFloat(r.querySelector('.due-hra').value) || 0;
                 const dueTotal = parseFloat(r.querySelector('.due-total').value) || 0;
                 const duePfRate = r.querySelector('.due-pf-rate') ? r.querySelector('.due-pf-rate').value : '';
@@ -1492,7 +1465,6 @@
                 const drawnPay = parseFloat(r.querySelector('.drawn-pay').value) || 0;
                 const drawnPay2 = parseFloat(r.querySelector('.drawn-pay2').value) || 0;
                 const drawnDa = parseFloat(r.querySelector('.drawn-da').value) || 0;
-                const drawnHraRate = r.querySelector('.drawn-hra-rate').value;
                 const drawnHra = parseFloat(r.querySelector('.drawn-hra').value) || 0;
                 const drawnTotal = parseFloat(r.querySelector('.drawn-total').value) || 0;
                 const drawnPfRate = r.querySelector('.drawn-pf-rate') ? r.querySelector('.drawn-pf-rate').value : '';
@@ -1507,8 +1479,8 @@
                 const diffNet = parseFloat(r.querySelector('.diff-net').value) || 0;
                 const daRate = parseFloat(r.querySelector('.da-rate-drawn').value) || 0;
 
-                mainData.push([monthLabel, days, daLim, duePay, duePay2, dueDa, dueHraRate, dueHra, dueTotal, duePfRate, duePfs, dueUnc,
-                    drawnPay, drawnPay2, drawnDa, drawnHraRate, drawnHra, drawnTotal, drawnPfRate, drawnPfs, drawnUnc,
+                mainData.push([monthLabel, days, daLim, duePay, duePay2, dueDa, dueHra, dueTotal, duePfRate, duePfs, dueUnc,
+                    drawnPay, drawnPay2, drawnDa, drawnHra, drawnTotal, drawnPfRate, drawnPfs, drawnUnc,
                     diffPay, diffDa, diffHra, diffTotal, diffPfs, diffUnc, diffNet, daRate]);
 
                 totals.days += days; totals.daLimit += daLim;
@@ -1523,19 +1495,19 @@
 
         if (cpcType === '6thPay') {
             mainData.push(['TOTAL', totals.days, totals.daLimit,
-                totals.duePay, totals.dueGp, totals.duePay2, totals.dueGp1, totals.dueDa, '', totals.dueHra, totals.dueTotal, totals.duePfs, totals.dueUnc,
-                totals.drawnPay, totals.drawnGp, totals.drawnPay2, totals.drawnGp1, totals.drawnDa, '', totals.drawnHra, totals.drawnTotal, totals.drawnPfs, totals.drawnUnc,
+                totals.duePay, totals.dueGp, totals.duePay2, totals.dueGp1, totals.dueDa, totals.dueHra, totals.dueTotal, totals.duePfs, totals.dueUnc,
+                totals.drawnPay, totals.drawnGp, totals.drawnPay2, totals.drawnGp1, totals.drawnDa, totals.drawnHra, totals.drawnTotal, totals.drawnPfs, totals.drawnUnc,
                 totals.diffPay, totals.diffGp, totals.diffDa, totals.diffHra, totals.diffTotal, totals.diffPfs, totals.diffUnc, totals.diffNet, totals.daRate]);
         } else {
             mainData.push(['TOTAL', totals.days, totals.daLimit,
-                totals.duePay, totals.duePay2, totals.dueDa, '', totals.dueHra, totals.dueTotal, '', totals.duePfs, totals.dueUnc,
-                totals.drawnPay, totals.drawnPay2, totals.drawnDa, '', totals.drawnHra, totals.drawnTotal, '', totals.drawnPfs, totals.drawnUnc,
+                totals.duePay, totals.duePay2, totals.dueDa, totals.dueHra, totals.dueTotal, '', totals.duePfs, totals.dueUnc,
+                totals.drawnPay, totals.drawnPay2, totals.drawnDa, totals.drawnHra, totals.drawnTotal, '', totals.drawnPfs, totals.drawnUnc,
                 totals.diffPay, totals.diffDa, totals.diffHra, totals.diffTotal, totals.diffPfs, totals.diffUnc, totals.diffNet, totals.daRate]);
         }
 
         const titlePrefix = cpcType === '6thPay' ? '6th Pay' : '7th Pay';
         const summaryData = [
-            ['ARREARS SUMMARY - ' + titlePrefix + (cpcType === '7thPay' ? ` (Fixed HRA: ₹${fixedHRA})` : '')],
+            ['ARREARS SUMMARY - ' + titlePrefix],
             ['Description', 'Amount'],
             ['Total Difference PAY', totals.diffPay],
             ...(cpcType === '6thPay' ? [['Total Difference GP', totals.diffGp]] : []),
@@ -1575,7 +1547,6 @@
                     duePay2: parseFloat(r.querySelector('.due-pay2').value) || 0,
                     dueGp1: parseFloat(r.querySelector('.due-gp1').value) || 0,
                     dueDa: parseFloat(r.querySelector('.due-da').value) || 0,
-                    dueHraRate: r.querySelector('.due-hra-rate').value,
                     dueHra: parseFloat(r.querySelector('.due-hra').value) || 0,
                     dueTotal: parseFloat(r.querySelector('.due-total').value) || 0,
                     duePfs: parseFloat(r.querySelector('.due-pfs').value) || 0,
@@ -1585,7 +1556,6 @@
                     drawnPay2: parseFloat(r.querySelector('.drawn-pay2').value) || 0,
                     drawnGp1: parseFloat(r.querySelector('.drawn-gp1').value) || 0,
                     drawnDa: parseFloat(r.querySelector('.drawn-da').value) || 0,
-                    drawnHraRate: r.querySelector('.drawn-hra-rate').value,
                     drawnHra: parseFloat(r.querySelector('.drawn-hra').value) || 0,
                     drawnTotal: parseFloat(r.querySelector('.drawn-total').value) || 0,
                     drawnPfs: parseFloat(r.querySelector('.drawn-pfs').value) || 0,
@@ -1609,7 +1579,6 @@
                     duePay: parseFloat(r.querySelector('.due-pay').value) || 0,
                     duePay2: parseFloat(r.querySelector('.due-pay2').value) || 0,
                     dueDa: parseFloat(r.querySelector('.due-da').value) || 0,
-                    dueHraRate: r.querySelector('.due-hra-rate').value,
                     dueHra: parseFloat(r.querySelector('.due-hra').value) || 0,
                     dueTotal: parseFloat(r.querySelector('.due-total').value) || 0,
                     duePfRate: r.querySelector('.due-pf-rate') ? r.querySelector('.due-pf-rate').value : '0.0833*(PAY2+DA)',
@@ -1618,7 +1587,6 @@
                     drawnPay: parseFloat(r.querySelector('.drawn-pay').value) || 0,
                     drawnPay2: parseFloat(r.querySelector('.drawn-pay2').value) || 0,
                     drawnDa: parseFloat(r.querySelector('.drawn-da').value) || 0,
-                    drawnHraRate: r.querySelector('.drawn-hra-rate').value,
                     drawnHra: parseFloat(r.querySelector('.drawn-hra').value) || 0,
                     drawnTotal: parseFloat(r.querySelector('.drawn-total').value) || 0,
                     drawnPfRate: r.querySelector('.drawn-pf-rate') ? r.querySelector('.drawn-pf-rate').value : '0.0833*(PAY2+DA)',
@@ -1646,8 +1614,8 @@
             level: document.getElementById('levelField').value,
             fromDate: document.getElementById('fromDate').value,
             toDate: document.getElementById('toDate').value,
-            incrementMonth: document.getElementById('incrementMonth').value,
-            fixedHRA: document.getElementById('fixedHRA').value
+            incrementMonth: document.getElementById('incrementMonth').value
+            // MODIFIED: Removed fixedHRA from saved data
         };
     }
 
@@ -1831,7 +1799,7 @@
                 document.getElementById('fromDate').value = data.fromDate || (data.cpcType === '6thPay' ? '2006-01-01' : '2024-01-01');
                 document.getElementById('toDate').value = data.toDate || (data.cpcType === '6thPay' ? '2015-12-31' : '2025-12-31');
                 document.getElementById('incrementMonth').value = data.incrementMonth || 'July';
-                document.getElementById('fixedHRA').value = data.fixedHRA || '0';
+                // MODIFIED: Removed fixedHRA loading
                 
                 // Load table data exactly as saved
                 if (data.tableData && Array.isArray(data.tableData)) {
@@ -1874,13 +1842,8 @@
                                 <td class="due-col"><input type="number" class="due-pay2" readonly value="${row.duePay2}"></td>
                                 <td class="due-col gp-column"><input type="number" class="due-gp1" readonly value="${row.dueGp1}"></td>
                                 <td class="due-col"><input type="number" class="due-da" readonly value="${row.dueDa}"></td>
-                                <td class="due-col">
-                                    <select class="hra-rate-select due-hra-rate" style="width:100%; font-size:0.6rem;">
-                                        <option value="No" ${row.dueHraRate === 'No' ? 'selected' : ''}>No</option>
-                                        <option value="Yes" ${row.dueHraRate === 'Yes' ? 'selected' : ''}>Yes</option>
-                                    </select>
-                                </td>
-                                <td class="due-col"><input type="number" class="due-hra" readonly value="${row.dueHra}"></td>
+                                <!-- MODIFIED: HRA as number input -->
+                                <td class="due-col"><input type="number" class="due-hra" value="${row.dueHra}" step="10" min="0" placeholder="HRA"></td>
                                 <td class="due-col"><input type="number" class="due-total" readonly value="${row.dueTotal}"></td>
                                 <td class="due-col"><input type="number" class="due-pfs" readonly value="${row.duePfs}"></td>
                                 <td class="due-col"><input type="number" class="due-unc" readonly value="${row.dueUnc}"></td>
@@ -1890,13 +1853,8 @@
                                 <td class="drawn-col"><input type="number" class="drawn-pay2" readonly value="${row.drawnPay2}"></td>
                                 <td class="drawn-col gp-column"><input type="number" class="drawn-gp1" readonly value="${row.drawnGp1}"></td>
                                 <td class="drawn-col"><input type="number" class="drawn-da" readonly value="${row.drawnDa}"></td>
-                                <td class="drawn-col">
-                                    <select class="hra-rate-select drawn-hra-rate" style="width:100%; font-size:0.6rem;">
-                                        <option value="No" ${row.drawnHraRate === 'No' ? 'selected' : ''}>No</option>
-                                        <option value="Yes" ${row.drawnHraRate === 'Yes' ? 'selected' : ''}>Yes</option>
-                                    </select>
-                                </td>
-                                <td class="drawn-col"><input type="number" class="drawn-hra" readonly value="${row.drawnHra}"></td>
+                                <!-- MODIFIED: HRA as number input -->
+                                <td class="drawn-col"><input type="number" class="drawn-hra" value="${row.drawnHra}" step="10" min="0" placeholder="HRA"></td>
                                 <td class="drawn-col"><input type="number" class="drawn-total" readonly value="${row.drawnTotal}"></td>
                                 <td class="drawn-col"><input type="number" class="drawn-pfs" readonly value="${row.drawnPfs}"></td>
                                 <td class="drawn-col"><input type="number" class="drawn-unc" readonly value="${row.drawnUnc}"></td>
@@ -1926,14 +1884,8 @@
                                 <td class="due-col"><input type="number" class="due-pay" value="${row.duePay}" step="100" min="0"></td>
                                 <td class="due-col"><input type="number" class="due-pay2" readonly value="${row.duePay2}"></td>
                                 <td class="due-col"><input type="number" class="due-da" readonly value="${row.dueDa}"></td>
-                                <td class="due-col">
-                                    <select class="hra-rate-select due-hra-rate" style="width:100%; font-size:0.6rem;">
-                                        <option value="No" ${row.dueHraRate === 'No' ? 'selected' : ''}>No</option>
-                                        <option value="Fixed" ${row.dueHraRate === 'Fixed' ? 'selected' : ''}>Fixed</option>
-                                        <option value="0.1*PAY2" ${row.dueHraRate === '0.1*PAY2' ? 'selected' : ''}>0.1*PAY2</option>
-                                    </select>
-                                </td>
-                                <td class="due-col"><input type="number" class="due-hra" readonly value="${row.dueHra}"></td>
+                                <!-- MODIFIED: HRA as number input -->
+                                <td class="due-col"><input type="number" class="due-hra" value="${row.dueHra}" step="10" min="0" placeholder="HRA"></td>
                                 <td class="due-col"><input type="number" class="due-total" readonly value="${row.dueTotal}"></td>
                                 <!-- PF Rate Dropdown Column -->
                                 <td class="due-col">
@@ -1950,14 +1902,8 @@
                                 <td class="drawn-col"><input type="number" class="drawn-pay" value="${row.drawnPay}" step="100" min="0"></td>
                                 <td class="drawn-col"><input type="number" class="drawn-pay2" readonly value="${row.drawnPay2}"></td>
                                 <td class="drawn-col"><input type="number" class="drawn-da" readonly value="${row.drawnDa}"></td>
-                                <td class="drawn-col">
-                                    <select class="hra-rate-select drawn-hra-rate" style="width:100%; font-size:0.6rem;">
-                                        <option value="No" ${row.drawnHraRate === 'No' ? 'selected' : ''}>No</option>
-                                        <option value="Fixed" ${row.drawnHraRate === 'Fixed' ? 'selected' : ''}>Fixed</option>
-                                        <option value="0.1*PAY2" ${row.drawnHraRate === '0.1*PAY2' ? 'selected' : ''}>0.1*PAY2</option>
-                                    </select>
-                                </td>
-                                <td class="drawn-col"><input type="number" class="drawn-hra" readonly value="${row.drawnHra}"></td>
+                                <!-- MODIFIED: HRA as number input -->
+                                <td class="drawn-col"><input type="number" class="drawn-hra" value="${row.drawnHra}" step="10" min="0" placeholder="HRA"></td>
                                 <td class="drawn-col"><input type="number" class="drawn-total" readonly value="${row.drawnTotal}"></td>
                                 <!-- PF Rate Dropdown Column -->
                                 <td class="drawn-col">
@@ -1987,9 +1933,9 @@
                         const monthSelect = newRow.querySelector('.month-cell');
                         const daysInput = newRow.querySelector('.days-in-month');
                         const duePay = newRow.querySelector('.due-pay');
-                        const dueHraRate = newRow.querySelector('.due-hra-rate');
+                        const dueHra = newRow.querySelector('.due-hra');
                         const drawnPay = newRow.querySelector('.drawn-pay');
-                        const drawnHraRate = newRow.querySelector('.drawn-hra-rate');
+                        const drawnHra = newRow.querySelector('.drawn-hra');
                         
                         // Month change event
                         monthSelect.addEventListener('change', () => {
@@ -2000,9 +1946,13 @@
                         // Input events
                         daysInput.addEventListener('input', () => recalcRow(newRow));
                         duePay.addEventListener('input', () => recalcRow(newRow));
-                        dueHraRate.addEventListener('change', () => recalcRow(newRow));
+                        if (dueHra) {
+                            dueHra.addEventListener('input', () => recalcRow(newRow));
+                        }
                         drawnPay.addEventListener('input', () => recalcRow(newRow));
-                        drawnHraRate.addEventListener('change', () => recalcRow(newRow));
+                        if (drawnHra) {
+                            drawnHra.addEventListener('input', () => recalcRow(newRow));
+                        }
                         
                         if (cpcType === '6thPay') {
                             const dueGp = newRow.querySelector('.due-gp');
@@ -2173,7 +2123,7 @@
                     <h3>${titlePrefix} Salary Difference in Revised Pay Scale</h3>
                     <p><strong>${data.level}</strong></p>
                     <p>Statement from ${data.fromDate} to ${data.toDate} | Month of Increment: <strong>${data.incrementMonth}</strong></p>
-                    ${!is6thPay && data.fixedHRA ? `<p><strong>Fixed HRA Amount: ₹${formatIndianNumber(parseInt(data.fixedHRA))}</strong></p>` : ''}
+                    <!-- MODIFIED: Removed Fixed HRA display -->
                 </div>
                 
                 <div class="info-section">
@@ -2199,9 +2149,9 @@
                             <th rowspan="2" class="da-header">DA Rate<br>Drawn</th>
                         </tr>
                         <tr>
-                            <th class="due-header">PAY</th><th class="due-header">GP</th><th class="due-header">PAY</th><th class="due-header">GP1</th>
+                            <th class="due-header">PAY</th><th class="due-header">GP</th><th class="due-header">PAY2</th><th class="due-header">GP1</th>
                             <th class="due-header">DA</th><th class="due-header">HRA</th><th class="due-header">TOTAL</th><th class="due-header">PFS</th><th class="due-header">UNC</th>
-                            <th class="drawn-header">PAY</th><th class="drawn-header">GP</th><th class="drawn-header">PAY</th><th class="drawn-header">GP1</th>
+                            <th class="drawn-header">PAY</th><th class="drawn-header">GP</th><th class="drawn-header">PAY2</th><th class="drawn-header">GP1</th>
                             <th class="drawn-header">DA</th><th class="drawn-header">HRA</th><th class="drawn-header">TOTAL</th><th class="drawn-header">PFS</th><th class="drawn-header">UNC</th>
                             <th class="diff-header">PAY</th><th class="diff-header">GP</th><th class="diff-header">DA</th><th class="diff-header">HRA</th>
                             <th class="diff-header">TOTAL</th><th class="diff-header">PFS</th><th class="diff-header">UNC</th><th class="diff-header">NET</th>
@@ -2274,9 +2224,9 @@
                             <th rowspan="2" class="da-header">DA Rate<br>Drawn</th>
                         </tr>
                         <tr>
-                            <th class="due-header">PAY</th><th class="due-header">PAY</th><th class="due-header">DA</th><th class="due-header">HRA</th>
+                            <th class="due-header">PAY</th><th class="due-header">PAY2</th><th class="due-header">DA</th><th class="due-header">HRA</th>
                             <th class="due-header">TOTAL</th><th class="due-header">PFS</th><th class="due-header">UNC</th>
-                            <th class="drawn-header">PAY</th><th class="drawn-header">PAY</th><th class="drawn-header">DA</th><th class="drawn-header">HRA</th>
+                            <th class="drawn-header">PAY</th><th class="drawn-header">PAY2</th><th class="drawn-header">DA</th><th class="drawn-header">HRA</th>
                             <th class="drawn-header">TOTAL</th><th class="drawn-header">PFS</th><th class="drawn-header">UNC</th>
                             <th class="diff-header">PAY</th><th class="diff-header">DA</th><th class="diff-header">HRA</th><th class="diff-header">TOTAL</th>
                             <th class="diff-header">PFS</th><th class="diff-header">UNC</th><th class="diff-header">NET</th>
@@ -2439,7 +2389,7 @@
             document.getElementById('empName').value = 'Guest User';
             document.getElementById('designation').value = 'Guest';
             document.getElementById('levelField').value = 'Level 10';
-            document.getElementById('fixedHRA').value = '0';
+            // MODIFIED: Removed fixedHRA clearing
             const cpcType = document.getElementById('cpcType').value;
             document.getElementById('fromDate').value = cpcType === '6thPay' ? '2006-01-01' : '2024-01-01';
             document.getElementById('toDate').value = cpcType === '6thPay' ? '2015-12-31' : '2025-12-31';
@@ -2472,7 +2422,7 @@
         document.getElementById('toDate').value = newCPCType === '6thPay' ? '2015-12-31' : '2025-12-31';
         document.getElementById('titlePayType').textContent = newCPCType === '6thPay' ? '6th Pay' : '7th Pay';
         
-        document.getElementById('fixedHRA').value = '0';
+        // MODIFIED: Removed fixedHRA reset
     }
 
     // ========== startup popup ==========
@@ -2533,17 +2483,13 @@
         document.getElementById('downloadPDFBtn').addEventListener('click', downloadPDF);
         document.getElementById('clearBtn').addEventListener('click', clearForm);
         
-        document.getElementById('fixedHRA').addEventListener('input', () => {
-            const rows = document.querySelectorAll('#tableBody tr');
-            rows.forEach(row => recalcRow(row));
-        });
+        // MODIFIED: Removed fixedHRA event listener
         
         // show the custom popup alert on every load
         showStartupAlert();
         
-        showInfo('👋 Welcome! Your data will be saved in your browser. Click Save to store, Load to retrieve.');
+        showInfo('👋 Welcome! HRA fields are now manual number inputs. Fixed HRA field removed.');
     });
 </script>
 </body>
 </html>
-
