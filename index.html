@@ -549,10 +549,14 @@
 <body>
 <div class="card" id="printableArea">
     <div class="univ-header">
-        <div class="header-line">DEVI AHILYA VISHWAVIDYALAYA, INDORE</div>
-        <div class="header-line" id="titleSecondLine">Statement Showing 7th Pay Salary Difference in Revised Pay Scale in Academic <span id="levelDisplay">Level 10</span></div>
+        <div class="header-line">Devi Ahilya Vishwavidyalaya</div>
+        <div class="header-line">Institute of Engineering & Technology</div>
         <div class="header-line">
-            Statement w.e.f. <input type="date" value="2024-01-01" id="fromDate"> to <input type="date" value="2025-12-31" id="toDate">
+            Statement Showing <span id="titlePayType">7th Pay</span> Salary Difference in Revised Pay Scale
+            <input type="text" placeholder="e.g., Level 10" value="Level 10" id="levelField">
+        </div>
+        <div class="header-line">
+            Statement from <input type="date" value="2024-01-01" id="fromDate"> to <input type="date" value="2025-12-31" id="toDate">
         </div>
     </div>
 
@@ -586,7 +590,6 @@
         </div>
         <div class="info-right">
             <div class="info-row"><label>Designation</label> <input type="text" value="Guest" id="designation" placeholder="Your Designation"></div>
-            <div class="info-row"><label>Academic Level</label> <input type="text" value="Level 10" id="levelField" placeholder="e.g., Level 10"></div>
         </div>
     </div>
 
@@ -1013,48 +1016,17 @@
         return html;
     }
 
+    // NEW FUNCTION: Update the title based on CPC selection
     function updateTitle() {
         const cpcType = document.getElementById('cpcType').value;
         const level = document.getElementById('levelField').value;
-        const fromDate = document.getElementById('fromDate').value;
-        const toDate = document.getElementById('toDate').value;
-        
-        const fromDateObj = new Date(fromDate);
-        const toDateObj = new Date(toDate);
-        
-        const fromFormatted = fromDateObj.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        }).replace(/\//g, '/');
-        
-        const toFormatted = toDateObj.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        }).replace(/\//g, '/');
-        
-        let secondLine = '';
-        if (cpcType === '6thPay') {
-            secondLine = `Statement Showing 6th Pay Salary Difference in Revised Pay Scale in Academic ${level}`;
-        } else {
-            secondLine = `Statement Showing 7th Pay Salary Difference in Revised Pay Scale in Academic ${level}`;
-        }
-        
-        document.getElementById('titleSecondLine').textContent = secondLine;
-        document.getElementById('levelDisplay').textContent = level;
-        
-        // Update the third line with formatted dates
-        const thirdLine = document.querySelector('.header-line:nth-child(3)');
-        if (thirdLine) {
-            thirdLine.innerHTML = `Statement w.e.f. <input type="date" value="${fromDate}" id="fromDate"> to <input type="date" value="${toDate}" id="toDate">`;
-        }
+        document.getElementById('titlePayType').textContent = cpcType === '6thPay' ? '6th Pay' : '7th Pay';
     }
 
     function updateTableHeader() {
         const thead = document.getElementById('tableHeader');
         const cpcType = document.getElementById('cpcType').value;
-        updateTitle();
+        document.getElementById('titlePayType').textContent = cpcType === '6thPay' ? '6th Pay' : '7th Pay';
         
         if (cpcType === '6thPay') {
             thead.innerHTML = `
@@ -1647,7 +1619,6 @@
             fromDate: document.getElementById('fromDate').value,
             toDate: document.getElementById('toDate').value,
             incrementMonth: document.getElementById('incrementMonth').value
-            // MODIFIED: Removed fixedHRA from saved data
         };
     }
 
@@ -1831,7 +1802,6 @@
                 document.getElementById('fromDate').value = data.fromDate || (data.cpcType === '6thPay' ? '2006-01-01' : '2024-01-01');
                 document.getElementById('toDate').value = data.toDate || (data.cpcType === '6thPay' ? '2015-12-31' : '2025-12-31');
                 document.getElementById('incrementMonth').value = data.incrementMonth || 'July';
-                // MODIFIED: Removed fixedHRA loading
                 
                 // Load table data exactly as saved
                 if (data.tableData && Array.isArray(data.tableData)) {
@@ -2058,7 +2028,7 @@
         }
     }
 
-    // Generate PDF from saved data with summary on last page
+    // MODIFIED: Generate PDF from saved data with summary on last page - BLACK AND WHITE ONLY
     function downloadPDF() {
         try {
             const data = collectDataForSaving();
@@ -2240,8 +2210,24 @@
                 // Add totals row
                 htmlContent += `<tr class="total-row">
                     <td colspan="3"><strong>TOTAL</strong></td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.duePay || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueGp || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.duePay2 || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueGp1 || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueDa || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueHra || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueTotal || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.duePfs || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueUnc || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnPay || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnGp || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnPay2 || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnGp1 || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnDa || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnHra || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnTotal || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnPfs || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnUnc || 0), 0))}</td>
                     <td><strong>${Math.round(totalDiffPay)}</strong></td>
                     <td><strong>${Math.round(totalDiffGp)}</strong></td>
                     <td><strong>${Math.round(totalDiffDa)}</strong></td>
@@ -2250,7 +2236,7 @@
                     <td><strong>${Math.round(totalDiffPfs)}</strong></td>
                     <td><strong>${Math.round(totalDiffUnc)}</strong></td>
                     <td><strong>${Math.round(totalDiffNet)}</strong></td>
-                    <td></td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.daRate || 0), 0))}</td>
                 </tr>`;
                 
             } else {
@@ -2309,8 +2295,20 @@
                 // Add totals row
                 htmlContent += `<tr class="total-row">
                     <td colspan="3"><strong>TOTAL</strong></td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.duePay || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.duePay2 || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueDa || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueHra || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueTotal || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.duePfs || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.dueUnc || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnPay || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnPay2 || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnDa || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnHra || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnTotal || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnPfs || 0), 0))}</td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.drawnUnc || 0), 0))}</td>
                     <td><strong>${Math.round(totalDiffPay)}</strong></td>
                     <td><strong>${Math.round(totalDiffDa)}</strong></td>
                     <td><strong>${Math.round(totalDiffHra)}</strong></td>
@@ -2318,7 +2316,7 @@
                     <td><strong>${Math.round(totalDiffPfs)}</strong></td>
                     <td><strong>${Math.round(totalDiffUnc)}</strong></td>
                     <td><strong>${Math.round(totalDiffNet)}</strong></td>
-                    <td></td>
+                    <td>${Math.round(data.tableData.reduce((sum, r) => sum + (r.daRate || 0), 0))}</td>
                 </tr>`;
             }
             
@@ -2339,11 +2337,15 @@
                     <h3>Statement w.e.f. ${fromFormatted} to ${toFormatted}</h3>
                     
                     <table class="summary-table">
-            `;
-            
-            if (is6thPay) {
-                htmlContent += `
-                        <tr><td>S No.</td><td>Name of Faculty</td><td>Total Amount</td><td>PFS</td><td>UNC</td><td>Gross</td><td>Net Amount</td></tr>
+                        <tr>
+                            <th>S No.</th>
+                            <th>Name of Faculty</th>
+                            <th>Total Amount</th>
+                            <th>PFS</th>
+                            <th>UNC</th>
+                            <th>Gross</th>
+                            <th>Net Amount</th>
+                        </tr>
                         <tr>
                             <td>1</td>
                             <td>${data.empName}</td>
@@ -2361,35 +2363,10 @@
                             <td><strong>${formatIndianNumber(totalDiffTotal + totalDiffUnc)}</strong></td>
                             <td><strong>${formatIndianNumber(totalDiffNet)}</strong></td>
                         </tr>
-                `;
-            } else {
-                htmlContent += `
-                        <tr><td>S No.</td><td>Name of Faculty</td><td>Total Amount</td><td>PFS</td><td>UNC</td><td>Gross</td><td>Net Amount</td></tr>
-                        <tr>
-                            <td>1</td>
-                            <td>${data.empName}</td>
-                            <td>${formatIndianNumber(totalDiffTotal)}</td>
-                            <td>${formatIndianNumber(totalDiffPfs)}</td>
-                            <td>${formatIndianNumber(totalDiffUnc)}</td>
-                            <td>${formatIndianNumber(totalDiffTotal + totalDiffUnc)}</td>
-                            <td>${formatIndianNumber(totalDiffNet)}</td>
-                        </tr>
-                        <tr class="total-row">
-                            <td colspan="2"><strong>Total</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffTotal)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffPfs)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffUnc)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffTotal + totalDiffUnc)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffNet)}</strong></td>
-                        </tr>
-                `;
-            }
-            
-            htmlContent += `
                     </table>
                     
                     <div class="amount-words">
-                        <p><strong>Amount in Words: ${convertToWords(totalDiffNet)} Rupees Only</strong></p>
+                        <p><strong>Net Amount in Words: ${convertToWords(totalDiffNet)} Rupees Only</strong></p>
                     </div>
                 </div>
                 
@@ -2450,7 +2427,6 @@
             document.getElementById('empName').value = 'Guest User';
             document.getElementById('designation').value = 'Guest';
             document.getElementById('levelField').value = 'Level 10';
-            // MODIFIED: Removed fixedHRA clearing
             const cpcType = document.getElementById('cpcType').value;
             document.getElementById('fromDate').value = cpcType === '6thPay' ? '2006-01-01' : '2024-01-01';
             document.getElementById('toDate').value = cpcType === '6thPay' ? '2015-12-31' : '2025-12-31';
@@ -2543,12 +2519,8 @@
         document.getElementById('downloadPDFBtn').addEventListener('click', downloadPDF);
         document.getElementById('clearBtn').addEventListener('click', clearForm);
         
-        // Add event listeners for title updates
+        // Add event listener for level field to update title
         document.getElementById('levelField').addEventListener('input', updateTitle);
-        document.getElementById('fromDate').addEventListener('change', updateTitle);
-        document.getElementById('toDate').addEventListener('change', updateTitle);
-        
-        // MODIFIED: Removed fixedHRA event listener
         
         // show the custom popup alert on every load
         showStartupAlert();
