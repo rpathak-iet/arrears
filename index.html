@@ -703,6 +703,11 @@
     let currentModalCallback = null;
     let selectedItemKey = null;
 
+    // MODIFIED: Round to next rupee (ceiling) for integer values
+    function roundToNextRupee(value) {
+        return Math.ceil(value);
+    }
+
     // Format number in Indian style (with commas)
     function formatIndianNumber(num) {
         if (num === null || num === undefined || isNaN(num)) return '0';
@@ -778,9 +783,9 @@
         return `${y}-${m.toString().padStart(2,'0')}`;
     }
     
-    // Rounding functions
+    // Rounding functions - MODIFIED: Use ceiling for integer values
     function roundToNearestInteger(value) {
-        return Math.round(value);
+        return Math.ceil(value);
     }
     
     function roundToNextTen(value) {
@@ -788,7 +793,7 @@
     }
     
     function roundToNearestHundred(value) {
-        return Math.round(value / 100) * 100;
+        return Math.ceil(value / 100) * 100;
     }
     
     function roundValue(value, calculationType, monthVal) {
@@ -2028,7 +2033,7 @@
         }
     }
 
-    // MODIFIED: Generate PDF from saved data with summary on last page - BLACK AND WHITE ONLY, LEGAL LANDSCAPE, FONT SIZE 8, NO WRAP
+    // MODIFIED: Generate PDF from saved data with summary on last page - BLACK AND WHITE ONLY, LEGAL LANDSCAPE
     function downloadPDF() {
         try {
             const data = collectDataForSaving();
@@ -2132,11 +2137,11 @@
             }).replace(/\//g, '/');
             
             // Create HTML content for PDF with black and white only, no colored fonts
-            // Legal page landscape, font size 8, no text wrapping
+            // Legal page landscape
             const style = `
                 <style>
                     @page { size: legal landscape; margin: 0.5in; }
-                    body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #000000; font-size: 8pt; }
+                    body { font-family: Arial, Helvetica, sans-serif; margin: 0; color: #000000; }
                     .header { text-align: center; margin-bottom: 20px; }
                     .header h1 { margin: 5px 0; font-size: 14pt; font-weight: bold; color: #000000; }
                     .header h2 { margin: 5px 0; font-size: 10pt; font-weight: bold; color: #000000; }
@@ -2146,21 +2151,20 @@
                     .info-row { display: flex; margin: 5px 15px 5px 0; min-width: 400px; }
                     .info-label { font-weight: bold; width: 150px; }
                     .info-value { flex: 1; }
-                    table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 8pt; border: 1px solid #000000; table-layout: fixed; }
-                    th { background: #ffffff; padding: 4px 2px; text-align: center; border: 1px solid #000000; font-weight: bold; vertical-align: middle; white-space: nowrap; overflow: hidden; }
-                    td { padding: 3px 2px; text-align: center; border: 1px solid #000000; white-space: nowrap; overflow: hidden; }
+                    table { border-collapse: collapse; width: 100%; margin: 15px 0; border: 1px solid #000000; table-layout: fixed; }
+                    th { background: #ffffff; padding: 4px 2px; text-align: center; border: 1px solid #000000; font-weight: bold; vertical-align: middle; white-space: nowrap; overflow: hidden; font-size: 8pt; }
+                    td { padding: 3px 2px; text-align: center; border: 1px solid #000000; white-space: nowrap; overflow: hidden; font-size: 8pt; }
+                    .total-row td { font-weight: bold; font-size: 7pt; }
                     .month-header { background: #ffffff; }
-                    .total-row { font-weight: bold; }
-                    .total-row td { font-weight: bold; }
                     .footer { text-align: center; margin-top: 20px; font-size: 7pt; border-top: 1px solid #000000; padding-top: 10px; }
                     .summary-section { text-align: center; margin: 30px 0 20px; }
                     .summary-section h1 { font-size: 14pt; font-weight: bold; margin: 5px 0; }
                     .summary-section h2 { font-size: 12pt; font-weight: bold; margin: 5px 0; }
                     .summary-section h3 { font-size: 10pt; font-weight: bold; margin: 5px 0; }
-                    .summary-section p { font-size: 8pt; margin: 5px 0; }
-                    .summary-table { width: 90%; margin: 20px auto; font-size: 8pt; border-collapse: collapse; border: 1px solid #000000; table-layout: fixed; }
-                    .summary-table th { padding: 4px 2px; border: 1px solid #000000; white-space: nowrap; }
-                    .summary-table td { padding: 3px 2px; border: 1px solid #000000; white-space: nowrap; }
+                    .summary-section p { margin: 5px 0; }
+                    .summary-table { width: 90%; margin: 20px auto; border-collapse: collapse; border: 1px solid #000000; table-layout: fixed; font-size: 12pt; }
+                    .summary-table th { padding: 4px 2px; border: 1px solid #000000; white-space: nowrap; font-size: 12pt; }
+                    .summary-table td { padding: 3px 2px; border: 1px solid #000000; white-space: nowrap; font-size: 12pt; }
                     .summary-table td:first-child { font-weight: bold; width: 5%; }
                     .summary-table td:nth-child(2) { width: 27%; }
                     .summary-table td:nth-child(3) { width: 13%; }
@@ -2168,7 +2172,7 @@
                     .summary-table td:nth-child(5) { width: 11%; }
                     .summary-table td:nth-child(6) { width: 13%; }
                     .summary-table td:nth-child(7) { width: 14%; }
-                    .amount-words { margin-top: 20px; padding: 10px; border-top: 1px solid #000000; font-size: 8pt; text-align: center; white-space: nowrap; }
+                    .amount-words { margin-top: 20px; padding: 10px; border-top: 1px solid #000000; text-align: center; white-space: nowrap; font-size: 12pt; }
                     .page-break { page-break-after: always; }
                 </style>
             `;
@@ -2223,65 +2227,65 @@
                         <td>${row.month}</td>
                         <td>${row.days}</td>
                         <td>${row.daLimit}</td>
-                        <td>${Math.round(row.duePay)}</td>
-                        <td>${Math.round(row.dueGp)}</td>
-                        <td>${Math.round(row.duePay2)}</td>
-                        <td>${Math.round(row.dueGp1)}</td>
-                        <td>${Math.round(row.dueDa)}</td>
-                        <td>${Math.round(row.dueHra)}</td>
-                        <td>${Math.round(row.dueTotal)}</td>
-                        <td>${Math.round(row.duePfs)}</td>
-                        <td>${Math.round(row.dueUnc)}</td>
-                        <td>${Math.round(row.drawnPay)}</td>
-                        <td>${Math.round(row.drawnGp)}</td>
-                        <td>${Math.round(row.drawnPay2)}</td>
-                        <td>${Math.round(row.drawnGp1)}</td>
-                        <td>${Math.round(row.drawnDa)}</td>
-                        <td>${Math.round(row.drawnHra)}</td>
-                        <td>${Math.round(row.drawnTotal)}</td>
-                        <td>${Math.round(row.drawnPfs)}</td>
-                        <td>${Math.round(row.drawnUnc)}</td>
-                        <td>${Math.round(row.diffPay)}</td>
-                        <td>${Math.round(row.diffGp)}</td>
-                        <td>${Math.round(row.diffDa)}</td>
-                        <td>${Math.round(row.diffHra)}</td>
-                        <td>${Math.round(row.diffTotal)}</td>
-                        <td>${Math.round(row.diffPfs)}</td>
-                        <td>${Math.round(row.diffUnc)}</td>
-                        <td style="font-weight: bold;">${Math.round(row.diffNet)}</td>
+                        <td>${Math.ceil(row.duePay)}</td>
+                        <td>${Math.ceil(row.dueGp)}</td>
+                        <td>${Math.ceil(row.duePay2)}</td>
+                        <td>${Math.ceil(row.dueGp1)}</td>
+                        <td>${Math.ceil(row.dueDa)}</td>
+                        <td>${Math.ceil(row.dueHra)}</td>
+                        <td>${Math.ceil(row.dueTotal)}</td>
+                        <td>${Math.ceil(row.duePfs)}</td>
+                        <td>${Math.ceil(row.dueUnc)}</td>
+                        <td>${Math.ceil(row.drawnPay)}</td>
+                        <td>${Math.ceil(row.drawnGp)}</td>
+                        <td>${Math.ceil(row.drawnPay2)}</td>
+                        <td>${Math.ceil(row.drawnGp1)}</td>
+                        <td>${Math.ceil(row.drawnDa)}</td>
+                        <td>${Math.ceil(row.drawnHra)}</td>
+                        <td>${Math.ceil(row.drawnTotal)}</td>
+                        <td>${Math.ceil(row.drawnPfs)}</td>
+                        <td>${Math.ceil(row.drawnUnc)}</td>
+                        <td>${Math.ceil(row.diffPay)}</td>
+                        <td>${Math.ceil(row.diffGp)}</td>
+                        <td>${Math.ceil(row.diffDa)}</td>
+                        <td>${Math.ceil(row.diffHra)}</td>
+                        <td>${Math.ceil(row.diffTotal)}</td>
+                        <td>${Math.ceil(row.diffPfs)}</td>
+                        <td>${Math.ceil(row.diffUnc)}</td>
+                        <td style="font-weight: bold;">${Math.ceil(row.diffNet)}</td>
                         <td>${row.daRate}</td>
                     </tr>`;
                 });
                 
-                // Add totals row - WITHOUT DA Rate total
+                // Add totals row - WITHOUT DA Rate total, with font size 7
                 htmlContent += `<tr class="total-row">
                     <td colspan="3"><strong>TOTAL</strong></td>
-                    <td><strong>${Math.round(totalDuePay)}</strong></td>
-                    <td><strong>${Math.round(totalDueGp)}</strong></td>
-                    <td><strong>${Math.round(totalDuePay2)}</strong></td>
-                    <td><strong>${Math.round(totalDueGp1)}</strong></td>
-                    <td><strong>${Math.round(totalDueDa)}</strong></td>
-                    <td><strong>${Math.round(totalDueHra)}</strong></td>
-                    <td><strong>${Math.round(totalDueTotal)}</strong></td>
-                    <td><strong>${Math.round(totalDuePfs)}</strong></td>
-                    <td><strong>${Math.round(totalDueUnc)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnPay)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnGp)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnPay2)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnGp1)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnDa)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnHra)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnTotal)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnPfs)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnUnc)}</strong></td>
-                    <td><strong>${Math.round(totalDiffPay)}</strong></td>
-                    <td><strong>${Math.round(totalDiffGp)}</strong></td>
-                    <td><strong>${Math.round(totalDiffDa)}</strong></td>
-                    <td><strong>${Math.round(totalDiffHra)}</strong></td>
-                    <td><strong>${Math.round(totalDiffTotal)}</strong></td>
-                    <td><strong>${Math.round(totalDiffPfs)}</strong></td>
-                    <td><strong>${Math.round(totalDiffUnc)}</strong></td>
-                    <td><strong>${Math.round(totalDiffNet)}</strong></td>
+                    <td><strong>${Math.ceil(totalDuePay)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueGp)}</strong></td>
+                    <td><strong>${Math.ceil(totalDuePay2)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueGp1)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueDa)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueHra)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueTotal)}</strong></td>
+                    <td><strong>${Math.ceil(totalDuePfs)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueUnc)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnPay)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnGp)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnPay2)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnGp1)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnDa)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnHra)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnTotal)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnPfs)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnUnc)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffPay)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffGp)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffDa)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffHra)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffTotal)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffPfs)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffUnc)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffNet)}</strong></td>
                     <td></td>
                 </tr>`;
                 
@@ -2313,55 +2317,55 @@
                         <td>${row.month}</td>
                         <td>${row.days}</td>
                         <td>${row.daLimit}</td>
-                        <td>${Math.round(row.duePay)}</td>
-                        <td>${Math.round(row.duePay2)}</td>
-                        <td>${Math.round(row.dueDa)}</td>
-                        <td>${Math.round(row.dueHra)}</td>
-                        <td>${Math.round(row.dueTotal)}</td>
-                        <td>${Math.round(row.duePfs)}</td>
-                        <td>${Math.round(row.dueUnc)}</td>
-                        <td>${Math.round(row.drawnPay)}</td>
-                        <td>${Math.round(row.drawnPay2)}</td>
-                        <td>${Math.round(row.drawnDa)}</td>
-                        <td>${Math.round(row.drawnHra)}</td>
-                        <td>${Math.round(row.drawnTotal)}</td>
-                        <td>${Math.round(row.drawnPfs)}</td>
-                        <td>${Math.round(row.drawnUnc)}</td>
-                        <td>${Math.round(row.diffPay)}</td>
-                        <td>${Math.round(row.diffDa)}</td>
-                        <td>${Math.round(row.diffHra)}</td>
-                        <td>${Math.round(row.diffTotal)}</td>
-                        <td>${Math.round(row.diffPfs)}</td>
-                        <td>${Math.round(row.diffUnc)}</td>
-                        <td style="font-weight: bold;">${Math.round(row.diffNet)}</td>
+                        <td>${Math.ceil(row.duePay)}</td>
+                        <td>${Math.ceil(row.duePay2)}</td>
+                        <td>${Math.ceil(row.dueDa)}</td>
+                        <td>${Math.ceil(row.dueHra)}</td>
+                        <td>${Math.ceil(row.dueTotal)}</td>
+                        <td>${Math.ceil(row.duePfs)}</td>
+                        <td>${Math.ceil(row.dueUnc)}</td>
+                        <td>${Math.ceil(row.drawnPay)}</td>
+                        <td>${Math.ceil(row.drawnPay2)}</td>
+                        <td>${Math.ceil(row.drawnDa)}</td>
+                        <td>${Math.ceil(row.drawnHra)}</td>
+                        <td>${Math.ceil(row.drawnTotal)}</td>
+                        <td>${Math.ceil(row.drawnPfs)}</td>
+                        <td>${Math.ceil(row.drawnUnc)}</td>
+                        <td>${Math.ceil(row.diffPay)}</td>
+                        <td>${Math.ceil(row.diffDa)}</td>
+                        <td>${Math.ceil(row.diffHra)}</td>
+                        <td>${Math.ceil(row.diffTotal)}</td>
+                        <td>${Math.ceil(row.diffPfs)}</td>
+                        <td>${Math.ceil(row.diffUnc)}</td>
+                        <td style="font-weight: bold;">${Math.ceil(row.diffNet)}</td>
                         <td>${row.daRate}</td>
                     </tr>`;
                 });
                 
-                // Add totals row - WITHOUT DA Rate total
+                // Add totals row - WITHOUT DA Rate total, with font size 7
                 htmlContent += `<tr class="total-row">
                     <td colspan="3"><strong>TOTAL</strong></td>
-                    <td><strong>${Math.round(totalDuePay)}</strong></td>
-                    <td><strong>${Math.round(totalDuePay2)}</strong></td>
-                    <td><strong>${Math.round(totalDueDa)}</strong></td>
-                    <td><strong>${Math.round(totalDueHra)}</strong></td>
-                    <td><strong>${Math.round(totalDueTotal)}</strong></td>
-                    <td><strong>${Math.round(totalDuePfs)}</strong></td>
-                    <td><strong>${Math.round(totalDueUnc)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnPay)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnPay2)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnDa)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnHra)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnTotal)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnPfs)}</strong></td>
-                    <td><strong>${Math.round(totalDrawnUnc)}</strong></td>
-                    <td><strong>${Math.round(totalDiffPay)}</strong></td>
-                    <td><strong>${Math.round(totalDiffDa)}</strong></td>
-                    <td><strong>${Math.round(totalDiffHra)}</strong></td>
-                    <td><strong>${Math.round(totalDiffTotal)}</strong></td>
-                    <td><strong>${Math.round(totalDiffPfs)}</strong></td>
-                    <td><strong>${Math.round(totalDiffUnc)}</strong></td>
-                    <td><strong>${Math.round(totalDiffNet)}</strong></td>
+                    <td><strong>${Math.ceil(totalDuePay)}</strong></td>
+                    <td><strong>${Math.ceil(totalDuePay2)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueDa)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueHra)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueTotal)}</strong></td>
+                    <td><strong>${Math.ceil(totalDuePfs)}</strong></td>
+                    <td><strong>${Math.ceil(totalDueUnc)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnPay)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnPay2)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnDa)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnHra)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnTotal)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnPfs)}</strong></td>
+                    <td><strong>${Math.ceil(totalDrawnUnc)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffPay)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffDa)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffHra)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffTotal)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffPfs)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffUnc)}</strong></td>
+                    <td><strong>${Math.ceil(totalDiffNet)}</strong></td>
                     <td></td>
                 </tr>`;
             }
@@ -2395,24 +2399,24 @@
                         <tr>
                             <td>1</td>
                             <td>${data.empName}</td>
-                            <td>${formatIndianNumber(totalDiffTotal)}</td>
-                            <td>${formatIndianNumber(totalDiffPfs)}</td>
-                            <td>${formatIndianNumber(totalDiffUnc)}</td>
-                            <td>${formatIndianNumber(totalDiffTotal + totalDiffUnc)}</td>
-                            <td>${formatIndianNumber(totalDiffNet)}</td>
+                            <td>${formatIndianNumber(Math.ceil(totalDiffTotal))}</td>
+                            <td>${formatIndianNumber(Math.ceil(totalDiffPfs))}</td>
+                            <td>${formatIndianNumber(Math.ceil(totalDiffUnc))}</td>
+                            <td>${formatIndianNumber(Math.ceil(totalDiffTotal + totalDiffUnc))}</td>
+                            <td>${formatIndianNumber(Math.ceil(totalDiffNet))}</td>
                         </tr>
                         <tr class="total-row">
                             <td colspan="2"><strong>Total</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffTotal)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffPfs)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffUnc)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffTotal + totalDiffUnc)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffNet)}</strong></td>
+                            <td><strong>${formatIndianNumber(Math.ceil(totalDiffTotal))}</strong></td>
+                            <td><strong>${formatIndianNumber(Math.ceil(totalDiffPfs))}</strong></td>
+                            <td><strong>${formatIndianNumber(Math.ceil(totalDiffUnc))}</strong></td>
+                            <td><strong>${formatIndianNumber(Math.ceil(totalDiffTotal + totalDiffUnc))}</strong></td>
+                            <td><strong>${formatIndianNumber(Math.ceil(totalDiffNet))}</strong></td>
                         </tr>
                     </table>
                     
                     <div class="amount-words">
-                        <p><strong>Net Amount in Words: ${convertToWords(totalDiffNet)} Rupees Only</strong></p>
+                        <p><strong>Net Amount in Words: ${convertToWords(Math.ceil(totalDiffNet))} Rupees Only</strong></p>
                     </div>
                 </div>
                 
@@ -2571,7 +2575,7 @@
         // show the custom popup alert on every load
         showStartupAlert();
         
-        showInfo('👋 Welcome! HRA fields are now manual number inputs. Fixed HRA field removed.');
+        showInfo('👋 Welcome! HRA fields are now manual number inputs. Fixed HRA field removed. Rounding is now to next rupee (ceiling).');
     });
 </script>
 </body>
