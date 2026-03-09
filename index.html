@@ -624,7 +624,8 @@
         ✅ <strong>PF Rate (7th Pay):</strong> Select formula from dropdown - calculates PF S in both DUE and DRAWN columns.<br>
         ✅ <strong>Save/Load:</strong> Use the buttons in the increment row to save/load data from your browser. Modern popup for selection.<br>
         ✅ <strong>Clear Saved:</strong> Select which saved data to delete from the popup.<br>
-        ✅ <strong>Download PDF:</strong> Generates PDF from saved data with proper formatting (HRA? subcolumns hidden, GP1 shown as GP).<br>
+        ✅ <strong>Download PDF:</strong> Generates PDF from saved data with proper formatting.<br>
+        ✅ <strong>Summary Table:</strong> Gross = Total Amount + UNC, Net Amount = Total Amount - PFS.
     </div>
 
     <!-- ********** PROFESSIONAL COPYRIGHT FOOTER WITH ICON ********** -->
@@ -2444,7 +2445,9 @@
                             <td>${formatIndianNumber(totalDiffTotal)}</td>
                             <td>${formatIndianNumber(totalDiffPfs)}</td>
                             <td>${formatIndianNumber(totalDiffUnc)}</td>
-                            <td>${formatIndianNumber(totalDiffTotal + totalDiffPfs + totalDiffUnc)}</td>
+                            <!-- MODIFIED: Gross = Total Amount + UNC (excluding PFS as UNC = PFS) -->
+                            <td>${formatIndianNumber(totalDiffTotal + totalDiffUnc)}</td>
+                            <!-- MODIFIED: Net Amount = Total Amount - PFS -->
                             <td>${formatIndianNumber(totalDiffTotal - totalDiffPfs)}</td>
                         </tr>
                         <tr class="total-row">
@@ -2452,7 +2455,7 @@
                             <td><strong>${formatIndianNumber(totalDiffTotal)}</strong></td>
                             <td><strong>${formatIndianNumber(totalDiffPfs)}</strong></td>
                             <td><strong>${formatIndianNumber(totalDiffUnc)}</strong></td>
-                            <td><strong>${formatIndianNumber(totalDiffTotal + totalDiffPfs + totalDiffUnc)}</strong></td>
+                            <td><strong>${formatIndianNumber(totalDiffTotal + totalDiffUnc)}</strong></td>
                             <td><strong>${formatIndianNumber(totalDiffTotal - totalDiffPfs)}</strong></td>
                         </tr>
                     </table>
